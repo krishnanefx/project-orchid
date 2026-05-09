@@ -68,9 +68,9 @@ export default function LoginPage() {
                     <label className="block font-label text-label text-on-surface" htmlFor="password">
                       Password
                     </label>
-                    <a className="font-label text-label text-primary hover:text-primary-container transition-colors duration-200" href="#">
+                    <Link className="font-label text-label text-primary hover:text-primary-container transition-colors duration-200" href="/forgot-password">
                       Forgot Password?
-                    </a>
+                    </Link>
                   </div>
                   <div className="relative group">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -103,12 +103,12 @@ export default function LoginPage() {
 
               <div className="mt-10 pt-8 border-t border-outline-variant text-center">
                 <p className="font-body-sm text-on-surface-variant mb-4">New to the orchid network?</p>
-                <button
-                  type="button"
-                  className="w-full border-2 border-secondary text-secondary font-display font-bold py-3 rounded-lg hover:bg-secondary-container transition-all duration-200"
+                <Link
+                  href="/register"
+                  className="w-full border-2 border-secondary text-secondary font-display font-bold py-3 rounded-lg hover:bg-secondary-container transition-colors duration-200 block text-center"
                 >
                   Join Project Orchid
-                </button>
+                </Link>
               </div>
             </div>
           </div>
