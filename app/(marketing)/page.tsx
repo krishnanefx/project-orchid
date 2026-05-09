@@ -49,12 +49,12 @@ export default function LandingPage() {
                   Join the Community
                   <span className="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
                 </Link>
-                <button
-                  type="button"
+                <a
+                  href="#societies"
                   className="px-8 py-4 border-2 border-primary text-primary rounded-xl font-label text-body-md hover:bg-primary/5 transition-colors duration-200"
                 >
                   Explore Societies
-                </button>
+                </a>
               </div>
             </div>
             <div className="relative">
@@ -147,15 +147,15 @@ export default function LandingPage() {
                   financials, and host cross-university collaborations.
                 </p>
               </div>
-              <button
-                type="button"
+              <Link
+                href="/login"
                 className="mt-8 flex items-center gap-2 font-label text-secondary font-bold"
               >
                 Register Society{" "}
                 <span className="material-symbols-outlined transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true">
                   chevron_right
                 </span>
-              </button>
+              </Link>
             </div>
 
             {/* Sponsors */}
@@ -182,15 +182,15 @@ export default function LandingPage() {
                     universities. Sponsor flagship events and list career opportunities on our dedicated
                     portal.
                   </p>
-                  <button
-                    type="button"
+                  <a
+                    href="mailto:partnerships@ukssc.org"
                     className="text-primary font-label flex items-center gap-2 hover:underline"
                   >
                     Request a Partnership Deck{" "}
                     <span className="material-symbols-outlined" aria-hidden="true">
                       download
                     </span>
-                  </button>
+                  </a>
                 </div>
               </div>
             </div>
@@ -237,12 +237,12 @@ export default function LandingPage() {
                 >
                   Create Your Profile
                 </Link>
-                <button
-                  type="button"
+                <a
+                  href="#students"
                   className="bg-primary-container text-on-primary px-10 py-5 rounded-2xl font-label text-lg border border-on-primary/20 hover:bg-on-primary/10 transition-colors duration-200"
                 >
                   View Member Benefits
-                </button>
+                </a>
               </div>
             </div>
           </div>
@@ -261,22 +261,26 @@ export default function LandingPage() {
             <div className="flex gap-4">
               <a
                 className="text-on-surface-variant hover:text-primary transition-colors duration-200"
-                href="#"
-                aria-label="Website"
+                href="https://ukssc.org"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="UKSSC Website"
               >
                 <span className="material-symbols-outlined" aria-hidden="true">public</span>
               </a>
               <a
                 className="text-on-surface-variant hover:text-primary transition-colors duration-200"
-                href="#"
-                aria-label="Chat"
+                href="https://t.me/ukssc"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Telegram"
               >
                 <span className="material-symbols-outlined" aria-hidden="true">chat</span>
               </a>
               <a
                 className="text-on-surface-variant hover:text-primary transition-colors duration-200"
-                href="#"
-                aria-label="Email"
+                href="mailto:hello@ukssc.org"
+                aria-label="Email us"
               >
                 <span className="material-symbols-outlined" aria-hidden="true">mail</span>
               </a>
@@ -291,7 +295,9 @@ export default function LandingPage() {
                 <li>
                   <a
                     className="text-on-surface-variant font-label hover:text-secondary hover:translate-x-1 transition-[color,transform] duration-200 block"
-                    href="#"
+                    href="https://ukssc.org"
+                    target="_blank"
+                    rel="noopener noreferrer"
                   >
                     UKSSC Info
                   </a>
@@ -299,7 +305,7 @@ export default function LandingPage() {
                 <li>
                   <a
                     className="text-on-surface-variant font-label hover:text-secondary hover:translate-x-1 transition-[color,transform] duration-200 block"
-                    href="#"
+                    href="#about"
                   >
                     About Project Orchid
                   </a>
@@ -307,7 +313,7 @@ export default function LandingPage() {
                 <li>
                   <a
                     className="text-on-surface-variant font-label hover:text-secondary hover:translate-x-1 transition-[color,transform] duration-200 block"
-                    href="#"
+                    href="mailto:careers@ukssc.org"
                   >
                     Careers
                   </a>
@@ -322,7 +328,7 @@ export default function LandingPage() {
                 <li>
                   <a
                     className="text-on-surface-variant font-label hover:text-secondary hover:translate-x-1 transition-[color,transform] duration-200 block"
-                    href="#"
+                    href="mailto:hello@ukssc.org"
                   >
                     Support Center
                   </a>
@@ -330,7 +336,7 @@ export default function LandingPage() {
                 <li>
                   <a
                     className="text-on-surface-variant font-label hover:text-secondary hover:translate-x-1 transition-[color,transform] duration-200 block"
-                    href="#"
+                    href="/privacy"
                   >
                     Privacy Policy
                   </a>
@@ -338,7 +344,7 @@ export default function LandingPage() {
                 <li>
                   <a
                     className="text-on-surface-variant font-label hover:text-secondary hover:translate-x-1 transition-[color,transform] duration-200 block"
-                    href="#"
+                    href="mailto:hello@ukssc.org"
                   >
                     Contact Us
                   </a>
