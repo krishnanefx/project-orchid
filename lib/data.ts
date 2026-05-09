@@ -3,8 +3,14 @@ import type { ForumBoard, OrchidEvent, Profile, ReimbursementClaim, Resource, So
 export const universities: University[] = [
   { id: "ucl", name: "University College London", domains: ["ucl.ac.uk"], city: "London" },
   { id: "imperial", name: "Imperial College London", domains: ["imperial.ac.uk"], city: "London" },
+  { id: "lse", name: "London School of Economics", domains: ["lse.ac.uk"], city: "London" },
+  { id: "kcl", name: "King's College London", domains: ["kcl.ac.uk"], city: "London" },
+  { id: "cambridge", name: "University of Cambridge", domains: ["cam.ac.uk"], city: "Cambridge" },
+  { id: "oxford", name: "University of Oxford", domains: ["ox.ac.uk"], city: "Oxford" },
   { id: "manchester", name: "University of Manchester", domains: ["student.manchester.ac.uk", "manchester.ac.uk"], city: "Manchester" },
-  { id: "edinburgh", name: "University of Edinburgh", domains: ["ed.ac.uk", "sms.ed.ac.uk"], city: "Edinburgh" }
+  { id: "edinburgh", name: "University of Edinburgh", domains: ["ed.ac.uk", "sms.ed.ac.uk"], city: "Edinburgh" },
+  { id: "warwick", name: "University of Warwick", domains: ["warwick.ac.uk"], city: "Coventry" },
+  { id: "bristol", name: "University of Bristol", domains: ["bristol.ac.uk"], city: "Bristol" }
 ];
 
 export const societies: Society[] = [
@@ -13,44 +19,66 @@ export const societies: Society[] = [
     name: "UCL Singapore Society",
     universityId: "ucl",
     logo: "UCL",
-    description: "A London base for Singaporeans across socials, careers, welfare and Freshers support.",
-    committee: ["Arielle Tan", "Brandon Lim", "Nivetha Rajan"],
+    description: "A London base for Singaporeans across socials, careers, welfare and Freshers support. One of the largest Singaporean societies in the UK.",
+    committee: ["Yew Chin Siang", "Arielle Tan", "Brandon Lim"],
     links: ["instagram.com/uclsingapore", "linktr.ee/uclsingapore"],
     members: 184,
     status: "active"
   },
   {
     id: "imperial-singapore",
-    name: "Imperial Singapore Society",
+    name: "Imperial College Singapore Society",
     universityId: "imperial",
     logo: "IC",
-    description: "A community for Singaporeans in STEM, medicine, business and design across Imperial.",
+    description: "A community for Singaporeans in STEM, medicine, business and design across Imperial College London.",
     committee: ["Megan Koh", "Isaac Teo", "Daryl Ong"],
     links: ["instagram.com/imperialsingsoc"],
     members: 143,
     status: "active"
   },
   {
+    id: "lse-singapore",
+    name: "LSE Singapore Society",
+    universityId: "lse",
+    logo: "LSE",
+    description: "Connecting Singaporeans at the London School of Economics through socials, career networking, and cultural events.",
+    committee: ["Clara Goh", "Ryan Chua"],
+    links: ["instagram.com/lsesingsoc"],
+    members: 118,
+    status: "active"
+  },
+  {
+    id: "cambridge-cumsa",
+    name: "Cambridge University Malaysia and Singapore Association",
+    universityId: "cambridge",
+    logo: "CAM",
+    description: "CUMSA bridges Malaysian and Singaporean students at Cambridge through academic, cultural and social programmes.",
+    committee: ["Albert Chieng", "Lim Zheng Wei"],
+    links: ["instagram.com/cumsa_official"],
+    members: 210,
+    status: "active"
+  },
+  {
     id: "manc-singapore",
-    name: "Manchester Singapore Society",
+    name: "Singapore Students' Society of Manchester",
     universityId: "manchester",
-    logo: "MN",
-    description: "Regional community, food nights, welfare check-ins and cross-society collaborations.",
-    committee: ["Clara Goh", "Ethan Quek"],
-    links: ["instagram.com/mancsgsoc"],
+    logo: "MAN",
+    description: "Regional community for Singaporeans in Manchester, hosting food nights, welfare check-ins and cross-society collaborations.",
+    committee: ["Samantha Tan", "Ethan Quek"],
+    links: ["instagram.com/mancsingsoc"],
     members: 96,
-    status: "onboarding"
+    status: "active"
   },
   {
     id: "edin-singapore",
-    name: "Edinburgh Singapore Society",
+    name: "Edinburgh University Singapore Students' Society",
     universityId: "edinburgh",
     logo: "ED",
-    description: "Student support, cultural events and alumni links for Singaporeans in Edinburgh.",
-    committee: ["Tricia Low", "Ryan Chua"],
-    links: ["instagram.com/edinsingsoc"],
+    description: "Student support, cultural events and alumni links for Singaporeans in Edinburgh and across Scotland.",
+    committee: ["Ilhan Athar", "Tricia Low"],
+    links: ["instagram.com/eusss_official"],
     members: 71,
-    status: "needs_review"
+    status: "active"
   }
 ];
 
@@ -132,7 +160,7 @@ export const events: OrchidEvent[] = [
     id: "evt-4",
     title: "LSE Soc Malam",
     type: "cross_society",
-    societyIds: ["ucl-singapore", "imperial-singapore", "edin-singapore"],
+    societyIds: ["ucl-singapore", "imperial-singapore", "lse-singapore", "cambridge-cumsa"],
     startsAt: "2026-11-02T22:00:00+00:00",
     location: "London",
     capacity: 300,

@@ -32,14 +32,13 @@ export default function LandingPage() {
                 >
                   verified
                 </span>
-                Operated by UKSSC
+                Celebrating 27 years &middot; Est. 1998
               </div>
               <h1 className="font-display text-h1 md:text-display tracking-tight text-on-surface">
                 Your home away from <span className="text-primary">home</span>.
               </h1>
               <p className="font-body-lg text-body-lg text-on-surface-variant max-w-xl">
-                Empowering the Singaporean student community in the UK through seamless networking,
-                resource sharing, and professional opportunities.
+                The official UKSSC platform connecting Singaporean students across Greater London, the South, Midlands, the North, and Scotland. Discover events, join your society, and build lasting community ties.
               </p>
               <div className="flex flex-wrap gap-4">
                 <Link
@@ -80,8 +79,7 @@ export default function LandingPage() {
           <div className="text-center mb-16 space-y-4">
             <h2 className="font-display text-h1 text-on-surface">One Platform, Many Roles</h2>
             <p className="font-body-md text-on-surface-variant max-w-2xl mx-auto">
-              Whether you&apos;re a fresh student, a society leader, or a professional sponsor, Project
-              Orchid provides the tools you need to thrive.
+              Whether you&apos;re a fresher just landing in the UK, a society committee leader, or a sponsor looking to connect with Singaporean talent, Project Orchid has the tools you need.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
@@ -97,21 +95,20 @@ export default function LandingPage() {
                   </div>
                   <h3 className="font-display text-h2 text-on-surface">For Students</h3>
                   <p className="text-on-surface-variant">
-                    Navigate your UK journey with confidence. Access local events, peer forums, and
-                    exclusive student discounts tailored for the Singaporean diaspora.
+                    Navigate your UK journey with confidence. Access cross-society events, the annual BlastOff! career fair, leadership programmes, and peer forums tailored for the Singaporean community.
                   </p>
                   <ul className="space-y-3">
                     <li className="flex items-center gap-3 text-body-sm font-label text-secondary">
                       <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
                         check_circle
                       </span>
-                      Event Discovery &amp; Ticketing
+                      Leaders Incubator &amp; Career Events
                     </li>
                     <li className="flex items-center gap-3 text-body-sm font-label text-secondary">
                       <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
                         check_circle
                       </span>
-                      Peer-to-Peer Housing Forums
+                      Pre-Departure Booklet &amp; Arrival Support
                     </li>
                   </ul>
                 </div>
@@ -143,8 +140,7 @@ export default function LandingPage() {
                 </div>
                 <h3 className="font-display text-h2 text-on-secondary-container">For Societies</h3>
                 <p className="text-on-secondary-container/80 text-body-sm">
-                  Powerful management tools to grow your community. Track memberships, manage
-                  financials, and host cross-university collaborations.
+                  Tools for 30+ partner societies across 5 UK regions. Manage memberships, track reimbursements, and coordinate cross-society events with the wider UKSSC network.
                 </p>
               </div>
               <Link
@@ -178,12 +174,10 @@ export default function LandingPage() {
                   </div>
                   <h3 className="font-display text-h2 text-on-surface">For Sponsors &amp; Recruiters</h3>
                   <p className="text-on-surface-variant max-w-2xl">
-                    Connect directly with top-tier Singaporean talent studying in prestigious UK
-                    universities. Sponsor flagship events and list career opportunities on our dedicated
-                    portal.
+                    Connect directly with Singaporean talent across 30+ university societies. Sponsor flagship events like BlastOff!, the Leaders Incubator, and our annual community retreats, and reach students at UCL, Imperial, LSE, Cambridge, Oxford, and beyond.
                   </p>
                   <a
-                    href="mailto:partnerships@ukssc.org"
+                    href="mailto:enquiries@theukssc.co.uk"
                     className="text-primary font-label flex items-center gap-2 hover:underline"
                   >
                     Request a Partnership Deck{" "}
@@ -207,10 +201,11 @@ export default function LandingPage() {
               <div className="font-display text-h3 font-extrabold text-outline">UKSSC OFFICIAL</div>
             </div>
             <div className="flex flex-wrap justify-center gap-8 grayscale">
-              <div className="font-display text-h3 font-bold opacity-40">UNIVERSITY LONDON</div>
-              <div className="font-display text-h3 font-bold opacity-40">OXBRIDGE SG</div>
-              <div className="font-display text-h3 font-bold opacity-40">IMPERIAL SOC</div>
-              <div className="font-display text-h3 font-bold opacity-40">LSE SINGAPORE</div>
+              <div className="font-display text-h3 font-bold opacity-40">UCLSS</div>
+              <div className="font-display text-h3 font-bold opacity-40">CUMSA</div>
+              <div className="font-display text-h3 font-bold opacity-40">IMPERIAL SG</div>
+              <div className="font-display text-h3 font-bold opacity-40">LSE SG SOC</div>
+              <div className="font-display text-h3 font-bold opacity-40">EUSSS</div>
             </div>
           </div>
         </section>
@@ -227,8 +222,7 @@ export default function LandingPage() {
                 Ready to bloom in the UK?
               </h2>
               <p className="text-on-primary/80 font-body-lg">
-                Project Orchid is more than just a directory&mdash;it&apos;s a vibrant ecosystem designed for
-                your success and well-being.
+                The UKSSC has represented Singaporean students in the UK since 1998. From the Scottish Highlands to London, your community is here. Join 30+ societies, access leadership programmes, and make the most of your UK years.
               </p>
               <div className="flex flex-col sm:flex-row justify-center gap-4">
                 <Link
@@ -255,13 +249,12 @@ export default function LandingPage() {
           <div className="space-y-6">
             <div className="font-display text-h3 font-bold text-primary">Project Orchid</div>
             <p className="font-body-sm text-body-sm text-on-surface-variant max-w-xs">
-              The central nervous system for Singaporean students in the United Kingdom. Empowering
-              communities, one orchid at a time.
+              The official digital platform of the UK Singapore Students&apos; Council, established 1998. Representing Singaporeans across 30+ university societies in the UK.
             </p>
             <div className="flex gap-4">
               <a
                 className="text-on-surface-variant hover:text-primary transition-colors duration-200"
-                href="https://ukssc.org"
+                href="https://www.theukssc.co.uk"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="UKSSC Website"
@@ -270,7 +263,7 @@ export default function LandingPage() {
               </a>
               <a
                 className="text-on-surface-variant hover:text-primary transition-colors duration-200"
-                href="https://t.me/ukssc"
+                href="https://t.me/uksscchannel"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Telegram"
@@ -279,7 +272,7 @@ export default function LandingPage() {
               </a>
               <a
                 className="text-on-surface-variant hover:text-primary transition-colors duration-200"
-                href="mailto:hello@ukssc.org"
+                href="mailto:enquiries@theukssc.co.uk"
                 aria-label="Email us"
               >
                 <span className="material-symbols-outlined" aria-hidden="true">mail</span>
@@ -295,7 +288,7 @@ export default function LandingPage() {
                 <li>
                   <a
                     className="text-on-surface-variant font-label hover:text-secondary hover:translate-x-1 transition-[color,transform] duration-200 block"
-                    href="https://ukssc.org"
+                    href="https://www.theukssc.co.uk"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -313,7 +306,7 @@ export default function LandingPage() {
                 <li>
                   <a
                     className="text-on-surface-variant font-label hover:text-secondary hover:translate-x-1 transition-[color,transform] duration-200 block"
-                    href="mailto:careers@ukssc.org"
+                    href="mailto:enquiries@theukssc.co.uk"
                   >
                     Careers
                   </a>
@@ -328,7 +321,7 @@ export default function LandingPage() {
                 <li>
                   <a
                     className="text-on-surface-variant font-label hover:text-secondary hover:translate-x-1 transition-[color,transform] duration-200 block"
-                    href="mailto:hello@ukssc.org"
+                    href="mailto:enquiries@theukssc.co.uk"
                   >
                     Support Center
                   </a>
@@ -344,7 +337,7 @@ export default function LandingPage() {
                 <li>
                   <a
                     className="text-on-surface-variant font-label hover:text-secondary hover:translate-x-1 transition-[color,transform] duration-200 block"
-                    href="mailto:hello@ukssc.org"
+                    href="mailto:enquiries@theukssc.co.uk"
                   >
                     Contact Us
                   </a>
