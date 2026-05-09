@@ -270,6 +270,14 @@ img {
   font-weight: 700;
 }
 
+.field-error {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--danger);
+}
+
 .page-header {
   display: flex;
   align-items: flex-end;
