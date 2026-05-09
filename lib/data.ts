@@ -72,10 +72,20 @@ export const profiles: Profile[] = [
   },
   {
     id: "profile-2",
-    name: "Kiran Wee",
-    email: "kiran@ukssc.org",
-    role: "finance_reviewer",
+    name: "Krishnan Adaikkappan",
+    email: "technology@ukssc.org",
+    role: "ukssc_staff",
     accountType: "staff",
+    consentStatus: "accepted",
+    verified: true
+  },
+  {
+    id: "profile-3",
+    name: "Marcus Tan",
+    email: "marcus.tan.19@ucl.ac.uk",
+    role: "alumni",
+    accountType: "alumni",
+    universityId: "ucl",
     consentStatus: "accepted",
     verified: true
   }
