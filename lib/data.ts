@@ -127,6 +127,18 @@ export const events: OrchidEvent[] = [
     rsvps: 48,
     checkedIn: 39,
     status: "waitlist"
+  },
+  {
+    id: "evt-4",
+    title: "LSE Soc Malam",
+    type: "cross_society",
+    societyIds: ["ucl-singapore", "imperial-singapore", "edin-singapore"],
+    startsAt: "2026-11-02T22:00:00+00:00",
+    location: "London",
+    capacity: 300,
+    rsvps: 187,
+    checkedIn: 0,
+    status: "open"
   }
 ];
 
