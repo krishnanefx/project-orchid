@@ -1,10 +1,12 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { claims as seedClaims } from "@/lib/data";
-import type { ClaimStatus, ReimbursementClaim } from "@/lib/types";
+import { claims as seedClaims, profiles } from "@/lib/data";
+import type { ClaimStatus, Profile, ReimbursementClaim, Role } from "@/lib/types";
 
 export type View = "dashboard" | "societies" | "events" | "forums" | "resources" | "admin" | "claims";
+
+export const ADMIN_ROLES: Role[] = ["super_admin", "ukssc_staff"];
 
 export type ThreadItem = {
   id: string;
@@ -28,13 +30,16 @@ type AppState = {
   setLocalClaims: (value: ReimbursementClaim[]) => void;
   threads: ThreadItem[];
   setThreads: (threads: ThreadItem[]) => void;
+  currentUser: Profile;
+  setCurrentUser: (profile: Profile) => void;
 };
 
 const AppContext = createContext<AppState | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [view, setView] = useState<View>("dashboard");
-  const [toast, setToast] = useState("University email verified: janelle.ho.26@ucl.ac.uk maps to UCL Singapore Society.");
+  const [currentUser, setCurrentUserState] = useState<Profile>(profiles[0]);
+  const [toast, setToast] = useState(`University email verified: ${profiles[0].email} maps to UCL Singapore Society.`);
   const [rsvp, setRsvp] = useState(false);
   const [joinedSociety, setJoinedSociety] = useState("UCL Singapore Society");
   const [claimStatuses, setClaimStatuses] = useState<Record<string, ClaimStatus>>({});
@@ -54,8 +59,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setToast(message);
   }
 
+  function setCurrentUser(profile: Profile) {
+    setCurrentUserState(profile);
+    // If switching to a non-admin account while on the admin view, go back to dashboard
+    if (view === "admin" && !ADMIN_ROLES.includes(profile.role)) {
+      setView("dashboard");
+    }
+    announce(`Switched to ${profile.name} (${profile.role.replace(/_/g, " ")})`);
+  }
+
   return (
-    <AppContext.Provider value={{ view, setView, toast, announce, rsvp, setRsvp, joinedSociety, setJoinedSociety, claimStatuses, setClaimStatuses, localClaims, setLocalClaims, threads, setThreads }}>
+    <AppContext.Provider value={{ view, setView, toast, announce, rsvp, setRsvp, joinedSociety, setJoinedSociety, claimStatuses, setClaimStatuses, localClaims, setLocalClaims, threads, setThreads, currentUser, setCurrentUser }}>
       {children}
     </AppContext.Provider>
   );
