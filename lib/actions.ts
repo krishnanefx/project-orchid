@@ -157,6 +157,7 @@ export async function createEventAction(input: {
   location: string;
   capacity: number;
   societyIds: string[];
+  description?: string;
 }): Promise<OrchidEvent> {
   const supabase = await createClient();
 
@@ -172,7 +173,7 @@ export async function createEventAction(input: {
       rsvps: 0,
       checked_in: 0,
       status: "open",
-      description: "",
+      description: input.description ?? "",
     })
     .select()
     .single();
@@ -191,6 +192,7 @@ export async function createEventAction(input: {
     rsvps: 0,
     checkedIn: 0,
     status: "open",
+    description: input.description ?? "",
   };
 }
 

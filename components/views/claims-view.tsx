@@ -14,8 +14,20 @@ const claimSchema = z.object({
   amount: z.coerce.number().positive("Amount must be greater than zero").finite("Enter a valid number")
 });
 
+const STATUS_FILTER_OPTIONS = ["All", "submitted", "under_review", "approved", "rejected", "paid"] as const;
+type StatusFilter = typeof STATUS_FILTER_OPTIONS[number];
+
+const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
+  submitted: { bg: "var(--primary-soft)", color: "var(--primary)" },
+  under_review: { bg: "#fff3cd", color: "#856404" },
+  approved: { bg: "var(--secondary-container)", color: "var(--on-secondary-container)" },
+  rejected: { bg: "#ffe4e4", color: "#c0392b" },
+  paid: { bg: "var(--surface-container)", color: "var(--muted)" },
+};
+
 export function ClaimsView() {
   const { localClaims, setLocalClaims, claimStatuses, setClaimStatuses, announce, currentUser } = useApp();
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
   const [purpose, setPurpose] = useState("");
   const [amount, setAmount] = useState("");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
@@ -76,33 +88,87 @@ export function ClaimsView() {
     announce("Claims CSV generated.");
   }
 
+  const filteredClaims = statusFilter === "All"
+    ? localClaims
+    : localClaims.filter((c) => (claimStatuses[c.id] ?? c.status) === statusFilter);
+
+  const totalAmount = filteredClaims.reduce((sum, c) => sum + c.amount, 0);
+
   return (
     <main className="stitch-main">
       <PageHeader title="Reimbursements Portal" copy="Submit receipts, route claims to UKSSC finance and track paid status." action="New Claim" />
+
+      {/* Status filter tabs */}
+      <div className="category-row" style={{ marginBottom: 16 }}>
+        {STATUS_FILTER_OPTIONS.map((s) => {
+          const count = s === "All" ? localClaims.length : localClaims.filter((c) => (claimStatuses[c.id] ?? c.status) === s).length;
+          return (
+            <button
+              key={s}
+              type="button"
+              className={statusFilter === s ? "active" : ""}
+              onClick={() => setStatusFilter(s)}
+              style={{ display: "flex", alignItems: "center", gap: 5 }}
+            >
+              {s === "All" ? "All" : s.replace("_", " ")}
+              {count > 0 && (
+                <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 5px", borderRadius: 999, background: statusFilter === s ? "rgba(255,255,255,0.3)" : "var(--surface-container)", color: statusFilter === s ? "inherit" : "var(--muted)" }}>
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
       <section className="two-column">
         <article className="stitch-card table-card">
           <div className="section-row">
-            <h3>Finance Review</h3>
+            <h3>
+              {statusFilter === "All" ? "All Claims" : `${statusFilter.replace("_", " ")} claims`}
+              {filteredClaims.length > 0 && (
+                <span style={{ fontWeight: 400, fontSize: 13, color: "var(--muted)", marginLeft: 8 }}>
+                  GBP {totalAmount.toFixed(2)} total
+                </span>
+              )}
+            </h3>
             <button className="text-action" type="button" onClick={exportClaims}><DownloadSimple size={16} /> Export</button>
           </div>
-          {localClaims.length === 0 ? (
-            <p style={{ color: "var(--muted)", padding: "16px 0" }}>No claims yet. Submit one using the form.</p>
+          {filteredClaims.length === 0 ? (
+            <p style={{ color: "var(--muted)", padding: "16px 0" }}>
+              {localClaims.length === 0 ? "No claims yet. Submit one using the form." : `No ${statusFilter === "All" ? "" : statusFilter.replace("_", " ")} claims.`}
+            </p>
           ) : (
             <table>
               <thead><tr><th>Claimant</th><th>Purpose</th><th>Amount</th><th>Status</th></tr></thead>
               <tbody>
-                {localClaims.map((claim) => {
+                {filteredClaims.map((claim) => {
                   const status = claimStatuses[claim.id] ?? claim.status;
+                  const colors = STATUS_COLORS[status] ?? STATUS_COLORS.submitted;
                   return (
                     <tr key={claim.id}>
-                      <td>{claim.claimant}</td>
+                      <td>
+                        <div style={{ fontSize: 13, fontWeight: 600 }}>{claim.claimant}</div>
+                        <div style={{ fontSize: 11, color: "var(--muted)" }}>{claim.submittedAt}</div>
+                      </td>
                       <td>{claim.purpose}</td>
-                      <td>GBP {claim.amount.toFixed(2)}</td>
+                      <td style={{ fontWeight: 700 }}>GBP {claim.amount.toFixed(2)}</td>
                       <td>
                         <select
                           value={status}
                           onChange={(event) => updateStatus(claim.id, event.target.value as ClaimStatus)}
                           aria-label={`Update ${claim.claimant} claim status`}
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: "4px 8px",
+                            borderRadius: 6,
+                            border: "none",
+                            background: colors.bg,
+                            color: colors.color,
+                            cursor: "pointer",
+                            outline: "none",
+                          }}
                         >
                           {(["submitted", "under_review", "approved", "rejected", "paid"] as ClaimStatus[]).map((item) => (
                             <option key={item} value={item}>{item.replace("_", " ")}</option>

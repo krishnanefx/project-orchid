@@ -174,6 +174,7 @@ function EventsTab() {
     startsAt: "",
     location: "",
     capacity: "100",
+    description: "",
     societyIds: [] as string[],
   });
 
@@ -198,10 +199,11 @@ function EventsTab() {
         startsAt: new Date(form.startsAt).toISOString(),
         location: form.location.trim(),
         capacity: Number(form.capacity) || 100,
+        description: form.description.trim() || undefined,
         societyIds: form.societyIds,
       });
       setLocalEvents([event, ...localEvents]);
-      setForm({ title: "", type: "ukssc", startsAt: "", location: "", capacity: "100", societyIds: [] });
+      setForm({ title: "", type: "ukssc", startsAt: "", location: "", capacity: "100", description: "", societyIds: [] });
       setStatus({ type: "success", msg: `"${event.title}" created.` });
       announce(`Event "${event.title}" published.`);
     } catch (err) {
@@ -228,6 +230,7 @@ function EventsTab() {
           <label>Date & time *<input type="datetime-local" value={form.startsAt} onChange={(e) => setForm((p) => ({ ...p, startsAt: e.target.value }))} /></label>
           <label>Location *<input value={form.location} onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))} placeholder="Central Hall, London" /></label>
           <label>Capacity<input type="number" value={form.capacity} onChange={(e) => setForm((p) => ({ ...p, capacity: e.target.value }))} min={1} /></label>
+          <label>Description<textarea value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} placeholder="Tell attendees what to expect…" rows={3} /></label>
           {localSocieties.length > 0 && (
             <div>
               <p style={{ fontSize: 12, fontWeight: 700, color: "var(--on-surface)", marginBottom: 8 }}>Tag societies</p>
