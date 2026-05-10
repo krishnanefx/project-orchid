@@ -1,12 +1,4 @@
 import { createClient } from "@/lib/supabase-server";
-import {
-  societies as seedSocieties,
-  events as seedEvents,
-  forums as seedForums,
-  resources as seedResources,
-  claims as seedClaims,
-  profiles as seedProfiles
-} from "@/lib/data";
 import type {
   Society,
   OrchidEvent,
@@ -21,101 +13,168 @@ async function db() {
   return createClient();
 }
 
+// ── Mappers: DB row (snake_case) → TypeScript type (camelCase) ──────────────
+
+function mapSociety(row: Record<string, unknown>): Society {
+  return {
+    id: row.id as string,
+    name: row.name as string,
+    universityId: (row.university_slug ?? "") as string,
+    logo: (row.logo ?? "") as string,
+    description: (row.description ?? "") as string,
+    bio: row.bio as string | undefined,
+    committee: (row.committee as string[]) ?? [],
+    links: (row.links as string[]) ?? [],
+    members: (row.members ?? 0) as number,
+    status: (row.status ?? "active") as Society["status"],
+    foundedYear: row.founded_year as number | undefined,
+    tags: (row.tags as string[]) ?? [],
+    bannerColor: row.banner_color as string | undefined,
+    logoUrl: row.logo_url as string | undefined,
+    bannerUrl: row.banner_url as string | undefined,
+    galleryUrls: (row.gallery_urls as string[]) ?? [],
+  };
+}
+
+function mapEvent(row: Record<string, unknown>): OrchidEvent {
+  return {
+    id: row.id as string,
+    title: row.title as string,
+    type: (row.event_type ?? row.type) as OrchidEvent["type"],
+    societyIds: (row.society_ids as string[]) ?? [],
+    startsAt: row.starts_at as string,
+    location: row.location as string,
+    capacity: (row.capacity ?? 0) as number,
+    rsvps: (row.rsvps ?? 0) as number,
+    checkedIn: (row.checked_in ?? 0) as number,
+    status: (row.status ?? "open") as OrchidEvent["status"],
+  };
+}
+
+function mapForumBoard(row: Record<string, unknown>): ForumBoard {
+  return {
+    id: row.id as string,
+    name: row.name as string,
+    visibility: row.visibility as ForumBoard["visibility"],
+    societyId: row.society_id as string | undefined,
+    threads: (row.threads ?? 0) as number,
+    replies: (row.replies ?? 0) as number,
+    pinned: (row.pinned ?? "") as string,
+    locked: (row.locked ?? false) as boolean,
+  };
+}
+
+function mapResource(row: Record<string, unknown>): Resource {
+  return {
+    id: row.id as string,
+    title: row.title as string,
+    category: row.category as Resource["category"],
+    audience: row.audience as string,
+    publishedAt: String(row.published_at ?? "").split("T")[0],
+  };
+}
+
+function mapClaim(row: Record<string, unknown>): ReimbursementClaim {
+  return {
+    id: row.id as string,
+    claimant: (row.claimant ?? "") as string,
+    societyId: (row.society_id ?? "") as string,
+    amount: (row.amount ?? 0) as number,
+    purpose: (row.purpose ?? "") as string,
+    status: (row.status ?? "submitted") as ClaimStatus,
+    submittedAt: String(row.submitted_at ?? row.created_at ?? "").split("T")[0],
+    receiptName: (row.receipt_name ?? row.receipt_path ?? "") as string,
+  };
+}
+
+export function mapProfile(row: Record<string, unknown>): Profile {
+  return {
+    id: row.id as string,
+    name: (row.full_name ?? row.name ?? "") as string,
+    email: (row.email ?? "") as string,
+    role: (row.role ?? "student_member") as Profile["role"],
+    accountType: (row.account_type ?? "student") as Profile["accountType"],
+    universityId: row.university_id as string | undefined,
+    societyId: row.society_id as string | undefined,
+    course: row.course as string | undefined,
+    year: (row.study_year ?? row.year) as string | undefined,
+    dietaryNeeds: row.dietary_needs as string | undefined,
+    accessibilityNeeds: row.accessibility_needs as string | undefined,
+    consentStatus: (row.consent_status ?? "pending") as Profile["consentStatus"],
+    verified: (row.verified ?? false) as boolean,
+  };
+}
+
+// ── Queries ──────────────────────────────────────────────────────────────────
+
 export async function getSocieties(): Promise<Society[]> {
-  try {
-    const supabase = await db();
-    const { data, error } = await supabase.from("societies").select("*");
-    if (!error && data?.length) return data as Society[];
-  } catch { /* fall through */ }
-  return seedSocieties;
+  const supabase = await db();
+  const { data } = await supabase.from("societies").select("*").order("name");
+  return (data ?? []).map((row) => mapSociety(row as Record<string, unknown>));
 }
 
 export async function getEvents(): Promise<OrchidEvent[]> {
-  try {
-    const supabase = await db();
-    const { data, error } = await supabase.from("events").select("*");
-    if (!error && data?.length) return data as OrchidEvent[];
-  } catch { /* fall through */ }
-  return seedEvents;
+  const supabase = await db();
+  const { data } = await supabase.from("events").select("*").order("starts_at");
+  return (data ?? []).map((row) => mapEvent(row as Record<string, unknown>));
 }
 
 export async function getForumBoards(): Promise<ForumBoard[]> {
-  try {
-    const supabase = await db();
-    const { data, error } = await supabase.from("forum_boards").select("*");
-    if (!error && data?.length) return data as ForumBoard[];
-  } catch { /* fall through */ }
-  return seedForums;
+  const supabase = await db();
+  const { data } = await supabase.from("forum_boards").select("*").order("name");
+  return (data ?? []).map((row) => mapForumBoard(row as Record<string, unknown>));
 }
 
 export async function getResources(): Promise<Resource[]> {
-  try {
-    const supabase = await db();
-    const { data, error } = await supabase.from("resources").select("*");
-    if (!error && data?.length) return data as Resource[];
-  } catch { /* fall through */ }
-  return seedResources;
+  const supabase = await db();
+  const { data } = await supabase
+    .from("resources")
+    .select("*")
+    .order("published_at", { ascending: false });
+  return (data ?? []).map((row) => mapResource(row as Record<string, unknown>));
 }
 
 export async function getClaims(societyId?: string): Promise<ReimbursementClaim[]> {
-  try {
-    const supabase = await db();
-    let query = supabase.from("reimbursement_claims").select("*");
-    if (societyId) query = query.eq("society_id", societyId);
-    const { data, error } = await query;
-    if (!error && data?.length) return data as ReimbursementClaim[];
-  } catch { /* fall through */ }
-  return societyId ? seedClaims.filter((c) => c.societyId === societyId) : seedClaims;
-}
-
-export async function submitClaim(
-  claim: Omit<ReimbursementClaim, "id" | "status" | "submittedAt">
-): Promise<ReimbursementClaim> {
-  const newClaim: ReimbursementClaim = {
-    ...claim,
-    id: `claim-${Date.now()}`,
-    status: "under_review",
-    submittedAt: new Date().toISOString().split("T")[0]
-  };
-  try {
-    const supabase = await db();
-    await supabase.from("reimbursement_claims").insert({
-      id: newClaim.id,
-      claimant: newClaim.claimant,
-      society_id: newClaim.societyId,
-      amount: newClaim.amount,
-      purpose: newClaim.purpose,
-      status: newClaim.status,
-      submitted_at: newClaim.submittedAt,
-      receipt_name: newClaim.receiptName
-    });
-  } catch { /* fall through — local state will hold it */ }
-  return newClaim;
-}
-
-export async function updateClaimStatus(id: string, status: ClaimStatus): Promise<void> {
-  try {
-    const supabase = await db();
-    await supabase.from("reimbursement_claims").update({ status }).eq("id", id);
-  } catch { /* fall through */ }
+  const supabase = await db();
+  let query = supabase
+    .from("reimbursement_claims")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (societyId) query = query.eq("society_id", societyId);
+  const { data } = await query;
+  return (data ?? []).map((row) => mapClaim(row as Record<string, unknown>));
 }
 
 export async function getProfile(userId: string): Promise<Profile | null> {
-  try {
-    const supabase = await db();
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
-      .single();
-    if (!error && data) return data as Profile;
-  } catch { /* fall through */ }
-  return seedProfiles.find((p) => p.id === userId) ?? null;
+  const supabase = await db();
+  const { data } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .single();
+  if (!data) return null;
+  return mapProfile(data as Record<string, unknown>);
 }
 
 export async function updateSociety(id: string, patch: Partial<Society>): Promise<void> {
-  try {
-    const supabase = await db();
-    await supabase.from("societies").update(patch).eq("id", id);
-  } catch { /* fall through — context local state handles it */ }
+  const supabase = await db();
+  const dbPatch: Record<string, unknown> = {};
+  if (patch.name !== undefined) dbPatch.name = patch.name;
+  if (patch.description !== undefined) dbPatch.description = patch.description;
+  if (patch.bio !== undefined) dbPatch.bio = patch.bio;
+  if (patch.committee !== undefined) dbPatch.committee = patch.committee;
+  if (patch.links !== undefined) dbPatch.links = patch.links;
+  if (patch.tags !== undefined) dbPatch.tags = patch.tags;
+  if (patch.bannerColor !== undefined) dbPatch.banner_color = patch.bannerColor;
+  if (patch.logoUrl !== undefined) dbPatch.logo_url = patch.logoUrl;
+  if (patch.bannerUrl !== undefined) dbPatch.banner_url = patch.bannerUrl;
+  if (patch.galleryUrls !== undefined) dbPatch.gallery_urls = patch.galleryUrls;
+  if (Object.keys(dbPatch).length) {
+    await supabase.from("societies").update(dbPatch).eq("id", id);
+  }
+}
+
+export async function updateClaimStatus(id: string, status: ClaimStatus): Promise<void> {
+  const supabase = await db();
+  await supabase.from("reimbursement_claims").update({ status }).eq("id", id);
 }

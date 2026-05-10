@@ -1,16 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { resources } from "@/lib/data";
+import { useApp } from "@/lib/app-context";
 import { PageHeader } from "@/components/ui/primitives";
 
 const CATEGORIES = ["All", "Guide", "Announcement", "Article"] as const;
 
 export function ResourcesView() {
+  const { localResources } = useApp();
   const [category, setCategory] = useState("All");
   const filtered = category === "All"
-    ? resources
-    : resources.filter((r) => r.category.toLowerCase() === category.toLowerCase());
+    ? localResources
+    : localResources.filter((r) => r.category.toLowerCase() === category.toLowerCase());
 
   return (
     <main className="stitch-main">
@@ -33,7 +34,7 @@ export function ResourcesView() {
         )) : (
           <article className="stitch-card resource-card">
             <h3>No resources yet</h3>
-            <p>UKSSC staff can publish this category from the admin workflow.</p>
+            <p>UKSSC staff can publish resources from the admin workflow.</p>
           </article>
         )}
       </section>
