@@ -53,7 +53,7 @@ function StatusBanner({ status, message }: { status: "success" | "error"; messag
 // ── Societies Tab ─────────────────────────────────────────────────────────────
 
 function SocietiesTab() {
-  const { localSocieties, updateSociety, announce } = useApp();
+  const { localSocieties, setLocalSocieties, announce } = useApp();
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ type: "success" | "error"; msg: string } | null>(null);
   const [form, setForm] = useState({
@@ -92,7 +92,7 @@ function SocietiesTab() {
         committee: form.committee.split("\n").map((t) => t.trim()).filter(Boolean),
         links: form.links.split("\n").map((t) => t.trim()).filter(Boolean),
       });
-      updateSociety(society.id, society);
+      setLocalSocieties([society, ...localSocieties]);
       setForm({ name: "", universitySlug: "", logo: "", description: "", bio: "", foundedYear: "", tags: "", committee: "", links: "" });
       setStatus({ type: "success", msg: `${society.name} registered successfully.` });
       announce(`Society "${society.name}" created.`);
