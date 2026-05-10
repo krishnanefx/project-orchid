@@ -49,6 +49,7 @@ function mapEvent(row: Record<string, unknown>): OrchidEvent {
     rsvps: (row.rsvps ?? 0) as number,
     checkedIn: (row.checked_in ?? 0) as number,
     status: (row.status ?? "open") as OrchidEvent["status"],
+    description: (row.description ?? "") as string,
   };
 }
 

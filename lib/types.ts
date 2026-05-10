@@ -130,6 +130,7 @@ export type OrchidEvent = {
   rsvps: number;
   checkedIn: number;
   status: "open" | "waitlist" | "closed";
+  description?: string;
 };
 
 export type ForumThread = {

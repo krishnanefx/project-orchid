@@ -68,6 +68,11 @@ function EventRow({ event, onRsvp, rsvpd }: { event: OrchidEvent; onRsvp: () => 
         <div style={{ fontSize: 15, fontWeight: 700, color: "var(--on-surface)", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {event.title}
         </div>
+        {event.description && (
+          <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {event.description}
+          </div>
+        )}
         <div style={{ display: "flex", gap: 14, fontSize: 12, color: "var(--muted)", flexWrap: "wrap" }}>
           <span><MapPin size={12} style={{ display: "inline", verticalAlign: "middle" }} /> {event.location}</span>
           <span><UsersThree size={12} style={{ display: "inline", verticalAlign: "middle" }} /> {event.rsvps}/{event.capacity} RSVPs</span>
