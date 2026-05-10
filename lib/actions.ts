@@ -343,6 +343,31 @@ export async function joinSocietyAction(societyId: string, userId: string): Prom
   await supabase.from("societies").update({ members }).eq("id", societyId);
 }
 
+// ── Member Management ─────────────────────────────────────────────────────────
+
+export async function getProfilesAction(limit = 100): Promise<import("@/lib/types").Profile[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("profiles")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  const { mapProfile } = await import("@/lib/orchid-service");
+  return (data ?? []).map((row) => mapProfile(row as Record<string, unknown>));
+}
+
+export async function updateMemberRoleAction(userId: string, role: import("@/lib/types").Role): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("profiles").update({ role }).eq("id", userId);
+  if (error) throw new Error(error.message);
+}
+
+export async function verifyMemberAction(userId: string): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("profiles").update({ verified: true }).eq("id", userId);
+  if (error) throw new Error(error.message);
+}
+
 // ── Event RSVPs ───────────────────────────────────────────────────────────────
 
 export async function rsvpEventAction(
