@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <rect width="32" height="32" rx="8" fill="#7c3aed"/>
+  <!-- Orchid petals -->
+  <ellipse cx="16" cy="10" rx="3" ry="5" fill="#f3e8ff" transform="rotate(0 16 16)"/>
+  <ellipse cx="16" cy="10" rx="3" ry="5" fill="#e9d5ff" transform="rotate(72 16 16)"/>
+  <ellipse cx="16" cy="10" rx="3" ry="5" fill="#f3e8ff" transform="rotate(144 16 16)"/>
+  <ellipse cx="16" cy="10" rx="3" ry="5" fill="#e9d5ff" transform="rotate(216 16 16)"/>
+  <ellipse cx="16" cy="10" rx="3" ry="5" fill="#f3e8ff" transform="rotate(288 16 16)"/>
+  <!-- Center -->
+  <circle cx="16" cy="16" r="3" fill="#ffffff"/>
+  <circle cx="16" cy="16" r="1.5" fill="#7c3aed"/>
+</svg>
