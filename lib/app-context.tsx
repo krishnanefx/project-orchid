@@ -33,8 +33,8 @@ type AppState = {
   announce: (message: string) => void;
   viewAs: Role | null;
   setViewAs: (role: Role | null) => void;
-  rsvp: boolean;
-  setRsvp: (value: boolean) => void;
+  rsvpdEventIds: string[];
+  setRsvpdEventIds: (ids: string[]) => void;
   joinedSociety: string;
   setJoinedSociety: (society: string) => void;
   claimStatuses: Record<string, ClaimStatus>;
@@ -71,6 +71,7 @@ type AppProviderProps = {
   initialEvents: OrchidEvent[];
   initialForums: ForumBoard[];
   initialResources: Resource[];
+  initialRsvpIds: string[];
 };
 
 export function AppProvider({
@@ -81,6 +82,7 @@ export function AppProvider({
   initialEvents,
   initialForums,
   initialResources,
+  initialRsvpIds,
 }: AppProviderProps) {
   const user = initialUser ?? BLANK_USER;
 
@@ -88,7 +90,7 @@ export function AppProvider({
   const [viewAs, setViewAsState] = useState<Role | null>(null);
   const [currentSocietyId, setCurrentSocietyId] = useState<string | null>(null);
   const [currentUser, setCurrentUserState] = useState<Profile>(user);
-  const [rsvp, setRsvp] = useState(false);
+  const [rsvpdEventIds, setRsvpdEventIds] = useState<string[]>(initialRsvpIds);
   const [joinedSociety, setJoinedSociety] = useState(
     initialSocieties.find((s) => s.id === user.societyId)?.name ?? ""
   );
@@ -163,7 +165,7 @@ export function AppProvider({
   }
 
   return (
-    <AppContext.Provider value={{ view, setView, toast, announce, viewAs, setViewAs, rsvp, setRsvp, joinedSociety, setJoinedSociety, claimStatuses, setClaimStatuses, localClaims, setLocalClaims, localEvents, setLocalEvents, localForums, setLocalForums, localResources, setLocalResources, threads, setThreads, currentUser, setCurrentUser, currentSocietyId, viewSociety, localSocieties, setLocalSocieties, updateSociety, permissions, setPermission, can }}>
+    <AppContext.Provider value={{ view, setView, toast, announce, viewAs, setViewAs, rsvpdEventIds, setRsvpdEventIds, joinedSociety, setJoinedSociety, claimStatuses, setClaimStatuses, localClaims, setLocalClaims, localEvents, setLocalEvents, localForums, setLocalForums, localResources, setLocalResources, threads, setThreads, currentUser, setCurrentUser, currentSocietyId, viewSociety, localSocieties, setLocalSocieties, updateSociety, permissions, setPermission, can }}>
       {children}
     </AppContext.Provider>
   );

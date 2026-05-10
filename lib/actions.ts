@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase-server";
-import type { ClaimStatus, ForumBoard, OrchidEvent, ReimbursementClaim, Resource, Society } from "@/lib/types";
+import type { ClaimStatus, ForumBoard, ForumThread, OrchidEvent, ReimbursementClaim, Resource, Society } from "@/lib/types";
 
 // ── Claims ───────────────────────────────────────────────────────────────────
 
@@ -266,4 +266,107 @@ export async function createForumBoardAction(input: {
     pinned: (row.pinned ?? "") as string,
     locked: false,
   };
+}
+
+// ── Forum Threads ─────────────────────────────────────────────────────────────
+
+export async function getForumThreadsAction(boardId: string): Promise<ForumThread[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("forum_threads")
+    .select("*")
+    .eq("board_id", boardId)
+    .order("pinned", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(50);
+  return (data ?? []).map((row) => {
+    const r = row as Record<string, unknown>;
+    return {
+      id: r.id as string,
+      boardId: r.board_id as string,
+      title: r.title as string,
+      body: (r.body ?? "") as string,
+      authorId: r.author_id as string,
+      pinned: (r.pinned ?? false) as boolean,
+      locked: (r.locked ?? false) as boolean,
+      createdAt: r.created_at as string,
+    };
+  });
+}
+
+export async function createForumThreadAction(input: {
+  boardId: string;
+  title: string;
+  body: string;
+  authorId: string;
+}): Promise<ForumThread> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("forum_threads")
+    .insert({ board_id: input.boardId, author_id: input.authorId, title: input.title, body: input.body })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  const r = data as Record<string, unknown>;
+  // Increment the board's cached thread counter
+  const { data: board } = await supabase.from("forum_boards").select("threads").eq("id", input.boardId).single();
+  const currentCount = ((board as Record<string, unknown>)?.threads as number) ?? 0;
+  await supabase.from("forum_boards").update({ threads: currentCount + 1 }).eq("id", input.boardId);
+  return {
+    id: r.id as string,
+    boardId: input.boardId,
+    title: input.title,
+    body: input.body,
+    authorId: input.authorId,
+    pinned: false,
+    locked: false,
+    createdAt: r.created_at as string,
+  };
+}
+
+// ── Society Membership ────────────────────────────────────────────────────────
+
+export async function joinSocietyAction(societyId: string, userId: string): Promise<void> {
+  const supabase = await createClient();
+  // Upsert membership row (unique on profile_id — one society per user)
+  const { error: memErr } = await supabase.from("memberships").upsert(
+    { profile_id: userId, society_id: societyId, membership_role: "member", status: "active" },
+    { onConflict: "profile_id" }
+  );
+  if (memErr) throw new Error(memErr.message);
+  // Keep profile.society_id in sync
+  const { error: profErr } = await supabase.from("profiles").update({ society_id: societyId }).eq("id", userId);
+  if (profErr) throw new Error(profErr.message);
+  // Bump member count
+  const { data: soc } = await supabase.from("societies").select("members").eq("id", societyId).single();
+  const members = ((soc as Record<string, unknown>)?.members as number ?? 0) + 1;
+  await supabase.from("societies").update({ members }).eq("id", societyId);
+}
+
+// ── Event RSVPs ───────────────────────────────────────────────────────────────
+
+export async function rsvpEventAction(
+  eventId: string,
+  userId: string
+): Promise<"added" | "removed"> {
+  const supabase = await createClient();
+  const { data: existing } = await supabase
+    .from("event_rsvps")
+    .select("id")
+    .eq("event_id", eventId)
+    .eq("profile_id", userId)
+    .maybeSingle();
+
+  const { data: ev } = await supabase.from("events").select("rsvps").eq("id", eventId).single();
+  const currentRsvps = ((ev as Record<string, unknown>)?.rsvps as number) ?? 0;
+
+  if (existing) {
+    await supabase.from("event_rsvps").delete().eq("event_id", eventId).eq("profile_id", userId);
+    await supabase.from("events").update({ rsvps: Math.max(0, currentRsvps - 1) }).eq("id", eventId);
+    return "removed";
+  } else {
+    await supabase.from("event_rsvps").insert({ event_id: eventId, profile_id: userId });
+    await supabase.from("events").update({ rsvps: currentRsvps + 1 }).eq("id", eventId);
+    return "added";
+  }
 }
