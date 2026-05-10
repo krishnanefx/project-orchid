@@ -31,6 +31,8 @@ type AppState = {
   setView: (view: View) => void;
   toast: string;
   announce: (message: string) => void;
+  viewAs: Role | null;
+  setViewAs: (role: Role | null) => void;
   rsvp: boolean;
   setRsvp: (value: boolean) => void;
   joinedSociety: string;
@@ -83,6 +85,7 @@ export function AppProvider({
   const user = initialUser ?? BLANK_USER;
 
   const [view, setView] = useState<View>("dashboard");
+  const [viewAs, setViewAsState] = useState<Role | null>(null);
   const [currentSocietyId, setCurrentSocietyId] = useState<string | null>(null);
   const [currentUser, setCurrentUserState] = useState<Profile>(user);
   const [rsvp, setRsvp] = useState(false);
@@ -148,14 +151,19 @@ export function AppProvider({
     }));
   }
 
+  function setViewAs(role: Role | null) {
+    setViewAsState(role);
+    setView("dashboard");
+  }
+
   function can(feature: FeatureKey): boolean {
-    const role = currentUser.role;
+    const role = viewAs ?? currentUser.role;
     if (role === "super_admin") return true;
     return permissions[role]?.[feature] ?? false;
   }
 
   return (
-    <AppContext.Provider value={{ view, setView, toast, announce, rsvp, setRsvp, joinedSociety, setJoinedSociety, claimStatuses, setClaimStatuses, localClaims, setLocalClaims, localEvents, setLocalEvents, localForums, setLocalForums, localResources, setLocalResources, threads, setThreads, currentUser, setCurrentUser, currentSocietyId, viewSociety, localSocieties, setLocalSocieties, updateSociety, permissions, setPermission, can }}>
+    <AppContext.Provider value={{ view, setView, toast, announce, viewAs, setViewAs, rsvp, setRsvp, joinedSociety, setJoinedSociety, claimStatuses, setClaimStatuses, localClaims, setLocalClaims, localEvents, setLocalEvents, localForums, setLocalForums, localResources, setLocalResources, threads, setThreads, currentUser, setCurrentUser, currentSocietyId, viewSociety, localSocieties, setLocalSocieties, updateSociety, permissions, setPermission, can }}>
       {children}
     </AppContext.Provider>
   );

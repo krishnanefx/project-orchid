@@ -77,13 +77,18 @@ const textareaStyle: React.CSSProperties = {
 };
 
 export function SocietyAdmin() {
-  const { setView, currentUser, localSocieties, updateSociety, announce, localClaims } = useApp();
+  const { setView, currentUser, localSocieties, updateSociety, announce } = useApp();
   const [tab, setTab] = useState<Tab>("profile");
   const [saving, setSaving] = useState(false);
 
   const society = localSocieties.find((s) => s.id === currentUser.societyId);
   const university = universities.find((u) => u.id === society?.universityId);
-  const isCommittee = society ? society.committee.includes(currentUser.name) : false;
+  const isPrivileged = currentUser.role === "super_admin" || currentUser.role === "ukssc_staff";
+  const isCommittee = society
+    ? isPrivileged || society.committee.some(
+        (entry) => entry.split("|")[0].trim().toLowerCase() === currentUser.name.toLowerCase()
+      )
+    : false;
 
   if (!society) {
     return (
@@ -199,12 +204,10 @@ export function SocietyAdmin() {
             if (!isCommittee) return;
             setSaving(true);
             updateSociety(society.id, patch);
-            updateSocietyAction(society.id, patch).catch(() => {
-              announce("Failed to save — changes saved locally only.");
-            }).finally(() => {
-              setSaving(false);
-              announce("Society profile saved.");
-            });
+            updateSocietyAction(society.id, patch)
+              .then(() => announce("Society profile saved."))
+              .catch(() => announce("Failed to save — changes saved locally only."))
+              .finally(() => setSaving(false));
           }}
         />
       )}
@@ -470,8 +473,10 @@ function EventsTab({
         checkedIn: 0,
         status: "open"
       };
-      setLocalEvents((prev) => [optimistic, ...prev]);
-      setAllEvents([optimistic, ...allEvents]);
+      const allWithOptimistic = [optimistic, ...allEvents];
+      const localWithOptimistic = [optimistic, ...localEvents];
+      setAllEvents(allWithOptimistic);
+      setLocalEvents(localWithOptimistic);
       announce(`Event "${draft.title}" created.`);
       createEventAction({
         title: draft.title,
@@ -481,8 +486,8 @@ function EventsTab({
         capacity: draft.capacity,
         societyIds: [societyId],
       }).then((saved) => {
-        setAllEvents(allEvents.map((e) => e.id === optimistic.id ? saved : e));
-        setLocalEvents(localEvents.map((e) => e.id === optimistic.id ? saved : e));
+        setAllEvents(allWithOptimistic.map((e) => e.id === optimistic.id ? saved : e));
+        setLocalEvents(localWithOptimistic.map((e) => e.id === optimistic.id ? saved : e));
       }).catch(() => announce("Event saved locally but failed to sync. Please refresh."));
     }
     setShowForm(false);
@@ -611,12 +616,15 @@ function MembersTab({
   const [filter, setFilter] = useState<"all" | "committee" | "members">("all");
   const [notes, setNotes] = useState<Record<string, string>>({});
 
-  const committeeRows = society.committee.map((name: string, i: number) => ({
-    id: `committee-${i}`,
-    name,
-    role: "Committee",
-    badge: "committee" as const
-  }));
+  const committeeRows = society.committee.map((entry: string, i: number) => {
+    const parts = entry.split("|");
+    return {
+      id: `committee-${i}`,
+      name: parts[0].trim(),
+      role: parts[1]?.trim() ?? "Committee",
+      badge: "committee" as const,
+    };
+  });
 
   const memberCount = society.members - society.committee.length;
 
