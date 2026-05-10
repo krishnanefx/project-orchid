@@ -16,7 +16,7 @@ async function forgotPasswordAction(formData: FormData) {
 
   const supabase = await createClient();
   await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${origin}/api/auth/callback?next=/dashboard`
+    redirectTo: `${origin}/api/auth/callback?next=/reset-password`
   });
 
   // Always redirect to sent state (avoid email enumeration)
