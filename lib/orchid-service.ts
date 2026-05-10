@@ -178,3 +178,12 @@ export async function updateClaimStatus(id: string, status: ClaimStatus): Promis
   const supabase = await db();
   await supabase.from("reimbursement_claims").update({ status }).eq("id", id);
 }
+
+export async function getUserRsvpIds(userId: string): Promise<string[]> {
+  const supabase = await db();
+  const { data } = await supabase
+    .from("event_rsvps")
+    .select("event_id")
+    .eq("profile_id", userId);
+  return (data ?? []).map((r) => (r as Record<string, unknown>).event_id as string);
+}

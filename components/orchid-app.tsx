@@ -98,6 +98,7 @@ type OrchidAppProps = {
   initialEvents: OrchidEvent[];
   initialForums: ForumBoard[];
   initialResources: Resource[];
+  initialRsvpIds: string[];
 };
 
 export function OrchidApp({
@@ -107,6 +108,7 @@ export function OrchidApp({
   initialEvents,
   initialForums,
   initialResources,
+  initialRsvpIds,
 }: OrchidAppProps) {
   return (
     <AppProvider
@@ -116,6 +118,7 @@ export function OrchidApp({
       initialEvents={initialEvents}
       initialForums={initialForums}
       initialResources={initialResources}
+      initialRsvpIds={initialRsvpIds}
     >
       <AppShell />
     </AppProvider>

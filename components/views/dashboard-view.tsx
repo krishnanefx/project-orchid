@@ -19,7 +19,7 @@ function EventTypePill({ type }: { type: string }) {
 }
 
 export function DashboardView() {
-  const { rsvp, setRsvp, threads, announce, currentUser, localEvents, localSocieties, localForums, viewSociety } = useApp();
+  const { rsvpdEventIds, setRsvpdEventIds, setLocalEvents, threads, announce, currentUser, localEvents, localSocieties, localForums, viewSociety } = useApp();
   const firstName = currentUser.name.split(" ")[0];
 
   const now = new Date().toISOString();
@@ -72,16 +72,16 @@ export function DashboardView() {
                   {featuredEvent.capacity - featuredEvent.rsvps} spots remaining
                 </span>
                 <button
-                  className={rsvp ? "stitch-secondary" : "stitch-primary"}
+                  className={rsvpdEventIds.includes(featuredEvent.id) ? "stitch-secondary" : "stitch-primary"}
                   onClick={() => {
-                    setRsvp(!rsvp);
-                    announce(rsvp
-                      ? `RSVP cancelled for ${featuredEvent.title}.`
-                      : "RSVP confirmed. Your QR check-in will appear before the event.");
+                    const alreadyRsvpd = rsvpdEventIds.includes(featuredEvent.id);
+                    setRsvpdEventIds(alreadyRsvpd ? rsvpdEventIds.filter((id) => id !== featuredEvent.id) : [...rsvpdEventIds, featuredEvent.id]);
+                    setLocalEvents(localEvents.map((e) => e.id === featuredEvent.id ? { ...e, rsvps: Math.max(0, e.rsvps + (alreadyRsvpd ? -1 : 1)) } : e));
+                    announce(alreadyRsvpd ? `RSVP cancelled for ${featuredEvent.title}.` : "RSVP confirmed. Your QR check-in will appear before the event.");
                   }}
                   type="button"
                 >
-                  {rsvp ? "RSVP'd ✓" : "RSVP Now"}
+                  {rsvpdEventIds.includes(featuredEvent.id) ? "RSVP'd ✓" : "RSVP Now"}
                 </button>
               </div>
             </>

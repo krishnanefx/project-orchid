@@ -3,6 +3,7 @@
 import { CalendarBlank, List, MapPin, UsersThree } from "@phosphor-icons/react";
 import { useState } from "react";
 import { useApp } from "@/lib/app-context";
+import { rsvpEventAction } from "@/lib/actions";
 import { PageHeader } from "@/components/ui/primitives";
 import type { OrchidEvent } from "@/lib/types";
 
@@ -92,22 +93,27 @@ function EventRow({ event, onRsvp, rsvpd }: { event: OrchidEvent; onRsvp: () => 
 }
 
 export function EventsHub() {
-  const { announce, localEvents } = useApp();
+  const { announce, localEvents, rsvpdEventIds, setRsvpdEventIds, currentUser, localEvents: allEvents, setLocalEvents } = useApp();
   const [filter, setFilter] = useState("All");
-  const [rsvpdIds, setRsvpdIds] = useState<Set<string>>(new Set());
 
   function toggleRsvp(event: OrchidEvent) {
-    setRsvpdIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(event.id)) {
-        next.delete(event.id);
-        announce(`RSVP cancelled for ${event.title}.`);
-      } else {
-        next.add(event.id);
-        announce("RSVP confirmed. QR check-in will be available before the event.");
-      }
-      return next;
-    });
+    const alreadyRsvpd = rsvpdEventIds.includes(event.id);
+    // Optimistic update
+    const nextIds = alreadyRsvpd
+      ? rsvpdEventIds.filter((id) => id !== event.id)
+      : [...rsvpdEventIds, event.id];
+    setRsvpdEventIds(nextIds);
+    // Update local event RSVP count
+    setLocalEvents(allEvents.map((e) =>
+      e.id === event.id ? { ...e, rsvps: Math.max(0, e.rsvps + (alreadyRsvpd ? -1 : 1)) } : e
+    ));
+    announce(alreadyRsvpd ? `RSVP cancelled for ${event.title}.` : "RSVP confirmed. QR check-in will be available before the event.");
+    // Persist to DB
+    if (currentUser.id) {
+      rsvpEventAction(event.id, currentUser.id).catch(() =>
+        announce("RSVP saved locally but failed to sync.")
+      );
+    }
   }
 
   const now = new Date().toISOString();
@@ -155,12 +161,12 @@ export function EventsHub() {
             </div>
           </div>
           <button
-            className={rsvpdIds.has(hero.id) ? "stitch-secondary" : "stitch-primary"}
+            className={rsvpdEventIds.includes(hero.id) ? "stitch-secondary" : "stitch-primary"}
             style={{ flexShrink: 0, padding: "12px 28px", fontSize: 15 }}
             onClick={() => toggleRsvp(hero)}
             type="button"
           >
-            {rsvpdIds.has(hero.id) ? "RSVP'd ✓" : "RSVP Now"}
+            {rsvpdEventIds.includes(hero.id) ? "RSVP'd ✓" : "RSVP Now"}
           </button>
         </div>
       ) : (
@@ -196,7 +202,7 @@ export function EventsHub() {
             <EventRow
               key={event.id}
               event={event}
-              rsvpd={rsvpdIds.has(event.id)}
+              rsvpd={rsvpdEventIds.includes(event.id)}
               onRsvp={() => toggleRsvp(event)}
             />
           ))
