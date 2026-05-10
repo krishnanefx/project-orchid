@@ -2,7 +2,7 @@
 
 import { ArrowLeft, CheckCircle, Globe, InstagramLogo, MapPin, UsersThree } from "@phosphor-icons/react";
 import { useApp } from "@/lib/app-context";
-import { societies, events, universities } from "@/lib/data";
+import { universities } from "@/lib/data";
 
 const STATUS_LABELS: Record<string, string> = {
   active: "Active",
@@ -11,10 +11,10 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export function SocietyDetail() {
-  const { currentSocietyId, setView, joinedSociety, setJoinedSociety, announce } = useApp();
-  const society = societies.find((s) => s.id === currentSocietyId);
+  const { currentSocietyId, setView, joinedSociety, setJoinedSociety, announce, localSocieties, localEvents } = useApp();
+  const society = localSocieties.find((s) => s.id === currentSocietyId);
   const university = universities.find((u) => u.id === society?.universityId);
-  const societyEvents = events.filter((e) => e.societyIds.includes(currentSocietyId ?? ""));
+  const societyEvents = localEvents.filter((e) => e.societyIds.includes(currentSocietyId ?? ""));
 
   if (!society) {
     return (

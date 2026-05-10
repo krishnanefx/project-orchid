@@ -1,11 +1,11 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { claims as seedClaims, profiles, societies as seedSocieties } from "@/lib/data";
-import type { ClaimStatus, Profile, ReimbursementClaim, Role, Society } from "@/lib/types";
+import { resolveUniversityByEmail } from "@/lib/data";
+import type { ClaimStatus, ForumBoard, OrchidEvent, Profile, ReimbursementClaim, Resource, Role, Society } from "@/lib/types";
 import { DEFAULT_PERMISSIONS, type FeatureKey, type PermissionsMatrix } from "@/lib/permissions";
 
-export type View = "dashboard" | "societies" | "society-detail" | "society-admin" | "events" | "forums" | "resources" | "admin" | "claims" | "access-control";
+export type View = "dashboard" | "societies" | "society-detail" | "society-admin" | "events" | "forums" | "resources" | "admin" | "admin-data" | "claims" | "access-control";
 
 export const ADMIN_ROLES: Role[] = ["super_admin", "ukssc_staff"];
 
@@ -14,6 +14,16 @@ export type ThreadItem = {
   title: string;
   count: string;
   meta: string;
+};
+
+const BLANK_USER: Profile = {
+  id: "",
+  name: "User",
+  email: "",
+  role: "student_member",
+  accountType: "student",
+  consentStatus: "pending",
+  verified: false,
 };
 
 type AppState = {
@@ -29,6 +39,12 @@ type AppState = {
   setClaimStatuses: (value: Record<string, ClaimStatus>) => void;
   localClaims: ReimbursementClaim[];
   setLocalClaims: (value: ReimbursementClaim[]) => void;
+  localEvents: OrchidEvent[];
+  setLocalEvents: (value: OrchidEvent[]) => void;
+  localForums: ForumBoard[];
+  setLocalForums: (value: ForumBoard[]) => void;
+  localResources: Resource[];
+  setLocalResources: (value: Resource[]) => void;
   threads: ThreadItem[];
   setThreads: (threads: ThreadItem[]) => void;
   currentUser: Profile;
@@ -44,21 +60,48 @@ type AppState = {
 
 const AppContext = createContext<AppState | null>(null);
 
-export function AppProvider({ children }: { children: ReactNode }) {
+type AppProviderProps = {
+  children: ReactNode;
+  initialUser: Profile | null;
+  initialSocieties: Society[];
+  initialClaims: ReimbursementClaim[];
+  initialEvents: OrchidEvent[];
+  initialForums: ForumBoard[];
+  initialResources: Resource[];
+};
+
+export function AppProvider({
+  children,
+  initialUser,
+  initialSocieties,
+  initialClaims,
+  initialEvents,
+  initialForums,
+  initialResources,
+}: AppProviderProps) {
+  const user = initialUser ?? BLANK_USER;
+
   const [view, setView] = useState<View>("dashboard");
   const [currentSocietyId, setCurrentSocietyId] = useState<string | null>(null);
-  const [currentUser, setCurrentUserState] = useState<Profile>(profiles[0]);
-  const [toast, setToast] = useState(`University email verified: ${profiles[0].email} maps to UCL Singapore Society.`);
+  const [currentUser, setCurrentUserState] = useState<Profile>(user);
   const [rsvp, setRsvp] = useState(false);
-  const [joinedSociety, setJoinedSociety] = useState("UCL Singapore Society");
-  const [localSocieties, setLocalSocieties] = useState<Society[]>(seedSocieties);
+  const [joinedSociety, setJoinedSociety] = useState(
+    initialSocieties.find((s) => s.id === user.societyId)?.name ?? ""
+  );
+  const [localSocieties, setLocalSocieties] = useState<Society[]>(initialSocieties);
+  const [localClaims, setLocalClaims] = useState<ReimbursementClaim[]>(initialClaims);
+  const [localEvents, setLocalEvents] = useState<OrchidEvent[]>(initialEvents);
+  const [localForums, setLocalForums] = useState<ForumBoard[]>(initialForums);
+  const [localResources, setLocalResources] = useState<Resource[]>(initialResources);
   const [permissions, setPermissions] = useState<PermissionsMatrix>(DEFAULT_PERMISSIONS);
   const [claimStatuses, setClaimStatuses] = useState<Record<string, ClaimStatus>>({});
-  const [localClaims, setLocalClaims] = useState<ReimbursementClaim[]>(seedClaims);
-  const [threads, setThreads] = useState<ThreadItem[]>([
-    { id: "thread-1", title: "Best places for authentic Chicken Rice in London?", count: "42", meta: "@foodie_sg · 18 replies · 2 hrs ago" },
-    { id: "thread-2", title: "Housing tips for 2nd years moving out of halls", count: "28", meta: "Advice · 5 replies · 5 hrs ago" }
-  ]);
+  const [threads, setThreads] = useState<ThreadItem[]>([]);
+
+  const [toast, setToast] = useState(() => {
+    if (!user.email) return "";
+    const uni = resolveUniversityByEmail(user.email);
+    return uni ? `University email verified: ${user.email} mapped to ${uni.name}.` : "";
+  });
 
   useEffect(() => {
     if (!toast) return;
@@ -111,7 +154,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AppContext.Provider value={{ view, setView, toast, announce, rsvp, setRsvp, joinedSociety, setJoinedSociety, claimStatuses, setClaimStatuses, localClaims, setLocalClaims, threads, setThreads, currentUser, setCurrentUser, currentSocietyId, viewSociety, localSocieties, updateSociety, permissions, setPermission, can }}>
+    <AppContext.Provider value={{ view, setView, toast, announce, rsvp, setRsvp, joinedSociety, setJoinedSociety, claimStatuses, setClaimStatuses, localClaims, setLocalClaims, localEvents, setLocalEvents, localForums, setLocalForums, localResources, setLocalResources, threads, setThreads, currentUser, setCurrentUser, currentSocietyId, viewSociety, localSocieties, updateSociety, permissions, setPermission, can }}>
       {children}
     </AppContext.Provider>
   );
