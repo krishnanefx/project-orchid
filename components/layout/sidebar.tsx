@@ -11,7 +11,7 @@ import {
   SignOut,
   UsersThree
 } from "@phosphor-icons/react";
-import { useApp, type View, ADMIN_ROLES } from "@/lib/app-context";
+import { useApp, type View } from "@/lib/app-context";
 import { profiles } from "@/lib/data";
 
 const navItems: { id: View; label: string; icon: React.ComponentType<{ size?: number; weight?: "regular" | "fill" | "bold" }> }[] = [
@@ -34,16 +34,23 @@ const ROLE_LABELS: Record<string, string> = {
   sponsor: "Sponsor"
 };
 
-export function Sidebar() {
-  const { view, setView, currentUser, setCurrentUser } = useApp();
-  const isAdmin = ADMIN_ROLES.includes(currentUser.role);
+const NAV_FEATURE_MAP: Partial<Record<View, import("@/lib/permissions").FeatureKey>> = {
+  societies: "nav_societies",
+  events: "nav_events",
+  forums: "nav_forums",
+  resources: "nav_resources",
+  "society-admin": "nav_society_admin",
+  admin: "nav_admin"
+};
 
-  const hasSociety = !!currentUser.societyId;
-  const canSubmitClaim = currentUser.societyId !== undefined && ["student_member", "society_admin"].includes(currentUser.role);
+export function Sidebar() {
+  const { view, setView, currentUser, setCurrentUser, can } = useApp();
+
   const visibleNavItems = navItems.filter((item) => {
-    if (item.id === "admin") return isAdmin;
-    if (item.id === "society-admin") return hasSociety;
-    return true;
+    const feature = NAV_FEATURE_MAP[item.id];
+    if (!feature) return true; // dashboard always visible
+    if (item.id === "society-admin" && !currentUser.societyId) return false;
+    return can(feature);
   });
 
   return (
@@ -105,7 +112,7 @@ export function Sidebar() {
       </div>
 
       <div className="stitch-sidebar-bottom">
-        {canSubmitClaim && (
+        {can("submit_claims") && (
           <button className="stitch-primary full" onClick={() => setView("claims")} type="button">Submit Reimbursement</button>
         )}
         <button className="stitch-nav-item" type="button"><GearSix size={17} /> Settings</button>
