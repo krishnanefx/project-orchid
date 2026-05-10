@@ -9,6 +9,7 @@ import { Footer } from "@/components/ui/primitives";
 
 const DashboardView = lazy(() => import("@/components/views/dashboard-view").then((m) => ({ default: m.DashboardView })));
 const SocietyDirectory = lazy(() => import("@/components/views/society-directory").then((m) => ({ default: m.SocietyDirectory })));
+const SocietyDetail = lazy(() => import("@/components/views/society-detail").then((m) => ({ default: m.SocietyDetail })));
 const EventsHub = lazy(() => import("@/components/views/events-hub").then((m) => ({ default: m.EventsHub })));
 const ForumsView = lazy(() => import("@/components/views/forums-view").then((m) => ({ default: m.ForumsView })));
 const ResourcesView = lazy(() => import("@/components/views/resources-view").then((m) => ({ default: m.ResourcesView })));
@@ -31,6 +32,7 @@ function AppShell() {
           <Suspense fallback={<ViewSkeleton />}>
             {view === "dashboard" && <DashboardView />}
             {view === "societies" && <SocietyDirectory />}
+            {view === "society-detail" && <SocietyDetail />}
             {view === "events" && <EventsHub />}
             {view === "forums" && <ForumsView />}
             {view === "resources" && <ResourcesView />}
