@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase-server";
+import { resolveUniversityByEmail } from "@/lib/data";
 import type {
   Society,
   OrchidEvent,
@@ -71,6 +72,7 @@ function mapResource(row: Record<string, unknown>): Resource {
     category: row.category as Resource["category"],
     audience: row.audience as string,
     publishedAt: String(row.published_at ?? "").split("T")[0],
+    body: (row.body ?? "") as string,
   };
 }
 
@@ -88,13 +90,17 @@ function mapClaim(row: Record<string, unknown>): ReimbursementClaim {
 }
 
 export function mapProfile(row: Record<string, unknown>): Profile {
+  const email = (row.email ?? "") as string;
+  // university_id in DB is a UUID, but the client uses slugs (e.g. "ucl").
+  // Resolve from email domain so university name shows correctly everywhere.
+  const resolvedUniversity = resolveUniversityByEmail(email);
   return {
     id: row.id as string,
     name: (row.full_name ?? row.name ?? "") as string,
-    email: (row.email ?? "") as string,
+    email,
     role: (row.role ?? "student_member") as Profile["role"],
     accountType: (row.account_type ?? "student") as Profile["accountType"],
-    universityId: row.university_id as string | undefined,
+    universityId: resolvedUniversity?.id ?? undefined,
     societyId: row.society_id as string | undefined,
     course: row.course as string | undefined,
     year: (row.study_year ?? row.year) as string | undefined,

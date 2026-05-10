@@ -171,4 +171,5 @@ export type Resource = {
   category: "announcement" | "guide" | "article";
   audience: string;
   publishedAt: string;
+  body?: string;
 };
