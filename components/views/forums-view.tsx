@@ -2,11 +2,10 @@
 
 import { useState } from "react";
 import { useApp } from "@/lib/app-context";
-import { forums } from "@/lib/data";
 import { PageHeader, Thread, TimelineItem } from "@/components/ui/primitives";
 
 export function ForumsView() {
-  const { threads, setThreads, announce } = useApp();
+  const { threads, setThreads, announce, localForums } = useApp();
   const [draftTitle, setDraftTitle] = useState("");
   const [draftBoard, setDraftBoard] = useState("Open Boards");
 
@@ -28,10 +27,10 @@ export function ForumsView() {
         <article className="stitch-card">
           <div className="section-row"><h3>Open Boards</h3><span>Verified users</span></div>
           {threads.map((thread) => <Thread key={thread.id} title={thread.title} count={thread.count} meta={thread.meta} />)}
-          {threads.length === 0 && forums.length === 0 ? (
+          {threads.length === 0 && localForums.length === 0 ? (
             <p style={{ color: "var(--text-secondary)", padding: "16px 0" }}>No threads yet. Be the first to post!</p>
           ) : null}
-          {forums.map((forum) => <Thread key={forum.id} title={forum.name} count={String(forum.threads)} meta={`${forum.replies} replies · ${forum.visibility === "membership_restricted" ? "Society board" : "Open board"}`} />)}
+          {localForums.map((forum) => <Thread key={forum.id} title={forum.name} count={String(forum.threads)} meta={`${forum.replies} replies · ${forum.visibility === "membership_restricted" ? "Society board" : "Open board"}`} />)}
         </article>
         <article className="stitch-card">
           <h3>New Thread</h3>

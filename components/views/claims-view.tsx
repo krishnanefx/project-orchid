@@ -4,7 +4,8 @@ import { DownloadSimple, FileArrowUp } from "@phosphor-icons/react";
 import { useState } from "react";
 import { z } from "zod";
 import { useApp } from "@/lib/app-context";
-import type { ClaimStatus, ReimbursementClaim } from "@/lib/types";
+import { submitClaimAction, updateClaimStatusAction } from "@/lib/actions";
+import type { ClaimStatus } from "@/lib/types";
 import { downloadCsv } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/primitives";
 
@@ -14,9 +15,10 @@ const claimSchema = z.object({
 });
 
 export function ClaimsView() {
-  const { localClaims, setLocalClaims, claimStatuses, setClaimStatuses, announce } = useApp();
+  const { localClaims, setLocalClaims, claimStatuses, setClaimStatuses, announce, currentUser } = useApp();
   const [purpose, setPurpose] = useState("");
   const [amount, setAmount] = useState("");
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [formErrors, setFormErrors] = useState<{ purpose?: string; amount?: string }>({});
 
   function submitClaim() {
@@ -28,22 +30,42 @@ export function ClaimsView() {
       return;
     }
 
+    if (!currentUser.societyId) {
+      announce("You must be affiliated with a society to submit a claim.");
+      return;
+    }
+
     setFormErrors({});
-    const newClaim: ReimbursementClaim = {
+    const today = new Date().toISOString().slice(0, 10);
+    const receiptName = receiptFile?.name ?? "receipt";
+
+    const optimistic = {
       id: `claim-${Date.now()}`,
-      claimant: "Janelle Ho",
-      societyId: "ucl-singapore",
+      claimant: currentUser.name,
+      societyId: currentUser.societyId,
       amount: result.data.amount,
       purpose: result.data.purpose,
-      status: "submitted",
-      submittedAt: new Date().toISOString().slice(0, 10),
-      receiptName: "uploaded-receipt"
+      status: "submitted" as ClaimStatus,
+      submittedAt: today,
+      receiptName,
     };
 
-    setLocalClaims([newClaim, ...localClaims]);
+    setLocalClaims([optimistic, ...localClaims]);
     setPurpose("");
     setAmount("");
+    setReceiptFile(null);
     announce("Reimbursement claim submitted to UKSSC finance.");
+
+    submitClaimAction(
+      { claimant: currentUser.name, societyId: currentUser.societyId, amount: result.data.amount, purpose: result.data.purpose, receiptName },
+      currentUser.id
+    ).catch(() => announce("Claim saved locally but failed to sync. Please refresh."));
+  }
+
+  function updateStatus(claimId: string, newStatus: ClaimStatus) {
+    setClaimStatuses({ ...claimStatuses, [claimId]: newStatus });
+    updateClaimStatusAction(claimId, newStatus).catch(console.error);
+    announce(`Claim marked ${newStatus.replace("_", " ")}.`);
   }
 
   function exportClaims() {
@@ -79,10 +101,7 @@ export function ClaimsView() {
                       <td>
                         <select
                           value={status}
-                          onChange={(event) => {
-                            setClaimStatuses({ ...claimStatuses, [claim.id]: event.target.value as ClaimStatus });
-                            announce(`${claim.claimant}'s claim marked ${event.target.value.replace("_", " ")}.`);
-                          }}
+                          onChange={(event) => updateStatus(claim.id, event.target.value as ClaimStatus)}
                           aria-label={`Update ${claim.claimant} claim status`}
                         >
                           {(["submitted", "under_review", "approved", "rejected", "paid"] as ClaimStatus[]).map((item) => (
@@ -110,7 +129,10 @@ export function ClaimsView() {
               <input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="86.40" inputMode="decimal" aria-describedby={formErrors.amount ? "err-amount" : undefined} />
               {formErrors.amount ? <span id="err-amount" className="field-error">{formErrors.amount}</span> : null}
             </label>
-            <label>Receipt<input type="file" /></label>
+            <label>
+              Receipt
+              <input type="file" onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)} />
+            </label>
             <button className="stitch-secondary full" type="button" onClick={submitClaim}><FileArrowUp size={16} /> Submit Claim</button>
           </form>
         </article>

@@ -12,7 +12,6 @@ import {
   UsersThree
 } from "@phosphor-icons/react";
 import { useApp, type View } from "@/lib/app-context";
-import { profiles } from "@/lib/data";
 
 const navItems: { id: View; label: string; icon: React.ComponentType<{ size?: number; weight?: "regular" | "fill" | "bold" }> }[] = [
   { id: "dashboard", label: "Dashboard", icon: House },
@@ -44,14 +43,21 @@ const NAV_FEATURE_MAP: Partial<Record<View, import("@/lib/permissions").FeatureK
 };
 
 export function Sidebar() {
-  const { view, setView, currentUser, setCurrentUser, can } = useApp();
+  const { view, setView, currentUser, can } = useApp();
 
   const visibleNavItems = navItems.filter((item) => {
     const feature = NAV_FEATURE_MAP[item.id];
-    if (!feature) return true; // dashboard always visible
+    if (!feature) return true;
     if (item.id === "society-admin" && !currentUser.societyId) return false;
     return can(feature);
   });
+
+  const initials = currentUser.name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
     <aside className="stitch-sidebar">
@@ -72,42 +78,33 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Demo account switcher */}
       <div style={{ marginTop: "auto", paddingTop: 16, borderTop: "1px solid rgba(208,194,213,0.3)" }}>
-        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 8, paddingLeft: 4 }}>
-          Demo accounts
-        </p>
-        <div style={{ display: "grid", gap: 4 }}>
-          {profiles.map((profile) => {
-            const active = currentUser.id === profile.id;
-            return (
-              <button
-                key={profile.id}
-                type="button"
-                onClick={() => setCurrentUser(profile)}
-                style={{
-                  width: "100%",
-                  border: 0,
-                  borderRadius: 8,
-                  padding: "8px 12px",
-                  textAlign: "left",
-                  cursor: "pointer",
-                  background: active ? "var(--primary-soft)" : "transparent",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 1,
-                  transition: "background 150ms ease"
-                }}
-              >
-                <span style={{ fontSize: 12, fontWeight: 700, color: active ? "var(--primary)" : "var(--on-surface)", lineHeight: 1.3 }}>
-                  {profile.name}
-                </span>
-                <span style={{ fontSize: 10, fontWeight: 600, color: "var(--muted)", letterSpacing: "0.02em" }}>
-                  {ROLE_LABELS[profile.role] ?? profile.role}
-                </span>
-              </button>
-            );
-          })}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 4px" }}>
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: "50%",
+              background: "var(--primary-soft)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 11,
+              fontWeight: 700,
+              color: "var(--primary)",
+              flexShrink: 0
+            }}
+          >
+            {initials || "?"}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--on-surface)", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {currentUser.name || "Unknown user"}
+            </div>
+            <div style={{ fontSize: 10, fontWeight: 600, color: "var(--muted)", letterSpacing: "0.02em" }}>
+              {ROLE_LABELS[currentUser.role] ?? currentUser.role}
+            </div>
+          </div>
         </div>
       </div>
 

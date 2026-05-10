@@ -6,6 +6,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/topbar";
 import { Footer } from "@/components/ui/primitives";
+import type { ForumBoard, OrchidEvent, Profile, ReimbursementClaim, Resource, Society } from "@/lib/types";
 
 const DashboardView = lazy(() => import("@/components/views/dashboard-view").then((m) => ({ default: m.DashboardView })));
 const SocietyDirectory = lazy(() => import("@/components/views/society-directory").then((m) => ({ default: m.SocietyDirectory })));
@@ -17,6 +18,7 @@ const ForumsView = lazy(() => import("@/components/views/forums-view").then((m) 
 const ResourcesView = lazy(() => import("@/components/views/resources-view").then((m) => ({ default: m.ResourcesView })));
 const AdminView = lazy(() => import("@/components/views/admin-view").then((m) => ({ default: m.AdminView })));
 const ClaimsView = lazy(() => import("@/components/views/claims-view").then((m) => ({ default: m.ClaimsView })));
+const AdminDataView = lazy(() => import("@/components/views/admin-data").then((m) => ({ default: m.AdminDataView })));
 
 function ViewSkeleton() {
   return <div className="stitch-main" style={{ paddingTop: 40 }} aria-busy="true" aria-label="Loading…" />;
@@ -42,6 +44,7 @@ function AppShell() {
             {view === "resources" && <ResourcesView />}
             {view === "admin" && <AdminView />}
             {view === "claims" && <ClaimsView />}
+            {view === "admin-data" && <AdminDataView />}
           </Suspense>
         </ErrorBoundary>
         <Footer />
@@ -50,9 +53,32 @@ function AppShell() {
   );
 }
 
-export function OrchidApp() {
+type OrchidAppProps = {
+  initialUser: Profile | null;
+  initialSocieties: Society[];
+  initialClaims: ReimbursementClaim[];
+  initialEvents: OrchidEvent[];
+  initialForums: ForumBoard[];
+  initialResources: Resource[];
+};
+
+export function OrchidApp({
+  initialUser,
+  initialSocieties,
+  initialClaims,
+  initialEvents,
+  initialForums,
+  initialResources,
+}: OrchidAppProps) {
   return (
-    <AppProvider>
+    <AppProvider
+      initialUser={initialUser}
+      initialSocieties={initialSocieties}
+      initialClaims={initialClaims}
+      initialEvents={initialEvents}
+      initialForums={initialForums}
+      initialResources={initialResources}
+    >
       <AppShell />
     </AppProvider>
   );

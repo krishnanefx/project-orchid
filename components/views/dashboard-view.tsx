@@ -6,10 +6,11 @@ import { useApp } from "@/lib/app-context";
 import { imageUrls, PageHeader, Thread, TimelineItem } from "@/components/ui/primitives";
 
 export function DashboardView() {
-  const { rsvp, setRsvp, threads, announce } = useApp();
+  const { rsvp, setRsvp, threads, announce, currentUser } = useApp();
+  const firstName = currentUser.name.split(" ")[0];
   return (
     <main className="stitch-main">
-      <PageHeader title="Welcome back, Wei!" copy="Here's what's happening in your UKSSC network today." action="New Post" onAction={() => announce("Open the Forums tab to publish a new verified community post.")} />
+      <PageHeader title={`Welcome back, ${firstName}!`} copy="Here's what's happening in your UKSSC network today." action="New Post" onAction={() => announce("Open the Forums tab to publish a new verified community post.")} />
       <section className="bento-grid">
         <article className="stitch-card bento-wide feature-card">
           <div className="card-heading">
@@ -64,7 +65,7 @@ export function DashboardView() {
             <span>Social</span>
           </div>
           <h3>LSE Soc Malam</h3>
-          <p>Annual cross-uni night out at Heaven.</p>
+          <p>Annual cross-uni night out in London.</p>
           <div className="mini-between"><span>Nov 2 • 10PM</span><button type="button">Get Tickets →</button></div>
         </article>
 
