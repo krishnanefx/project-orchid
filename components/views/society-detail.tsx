@@ -13,7 +13,7 @@ const STATUS_LABELS: Record<string, string> = {
 export function SocietyDetail() {
   const { currentSocietyId, setView, joinedSociety, setJoinedSociety, announce, localSocieties, localEvents } = useApp();
   const society = localSocieties.find((s) => s.id === currentSocietyId);
-  const university = universities.find((u) => u.id === society?.universityId);
+  const university = universities.find((u) => u.id === (society?.universitySlug || society?.universityId));
   const societyEvents = localEvents.filter((e) => e.societyIds.includes(currentSocietyId ?? ""));
 
   if (!society) {

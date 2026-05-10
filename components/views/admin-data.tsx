@@ -139,7 +139,7 @@ function SocietiesTab() {
         ) : (
           <div style={{ display: "grid", gap: 10 }}>
             {localSocieties.map((s) => {
-              const uni = universities.find((u) => u.id === s.universityId);
+              const uni = universities.find((u) => u.id === (s.universitySlug || s.universityId));
               return (
                 <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderRadius: 10, background: "var(--surface-container, #f8f4fa)" }}>
                   <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--primary-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: "var(--primary)", flexShrink: 0 }}>

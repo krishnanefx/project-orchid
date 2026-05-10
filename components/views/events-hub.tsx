@@ -92,8 +92,23 @@ function EventRow({ event, onRsvp, rsvpd }: { event: OrchidEvent; onRsvp: () => 
 }
 
 export function EventsHub() {
-  const { rsvp, setRsvp, announce, localEvents } = useApp();
+  const { announce, localEvents } = useApp();
   const [filter, setFilter] = useState("All");
+  const [rsvpdIds, setRsvpdIds] = useState<Set<string>>(new Set());
+
+  function toggleRsvp(event: OrchidEvent) {
+    setRsvpdIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(event.id)) {
+        next.delete(event.id);
+        announce(`RSVP cancelled for ${event.title}.`);
+      } else {
+        next.add(event.id);
+        announce("RSVP confirmed. QR check-in will be available before the event.");
+      }
+      return next;
+    });
+  }
 
   const now = new Date().toISOString();
   const upcoming = localEvents
@@ -140,15 +155,12 @@ export function EventsHub() {
             </div>
           </div>
           <button
-            className={rsvp ? "stitch-secondary" : "stitch-primary"}
+            className={rsvpdIds.has(hero.id) ? "stitch-secondary" : "stitch-primary"}
             style={{ flexShrink: 0, padding: "12px 28px", fontSize: 15 }}
-            onClick={() => {
-              setRsvp(!rsvp);
-              announce(rsvp ? `RSVP cancelled for ${hero.title}.` : "RSVP confirmed. QR check-in will be available before the event.");
-            }}
+            onClick={() => toggleRsvp(hero)}
             type="button"
           >
-            {rsvp ? "RSVP'd ✓" : "RSVP Now"}
+            {rsvpdIds.has(hero.id) ? "RSVP'd ✓" : "RSVP Now"}
           </button>
         </div>
       ) : (
@@ -184,8 +196,8 @@ export function EventsHub() {
             <EventRow
               key={event.id}
               event={event}
-              rsvpd={rsvp && hero?.id === event.id}
-              onRsvp={() => announce(`RSVP toggled for ${event.title}.`)}
+              rsvpd={rsvpdIds.has(event.id)}
+              onRsvp={() => toggleRsvp(event)}
             />
           ))
         )}

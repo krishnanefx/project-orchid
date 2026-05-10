@@ -5,6 +5,7 @@ import {
   CalendarBlank,
   ChartLineUp,
   ChatCircleText,
+  Eye,
   GearSix,
   House,
   IdentificationCard,
@@ -12,6 +13,7 @@ import {
   UsersThree
 } from "@phosphor-icons/react";
 import { useApp, type View } from "@/lib/app-context";
+import type { Role } from "@/lib/types";
 
 const navItems: { id: View; label: string; icon: React.ComponentType<{ size?: number; weight?: "regular" | "fill" | "bold" }> }[] = [
   { id: "dashboard", label: "Dashboard", icon: House },
@@ -42,8 +44,17 @@ const NAV_FEATURE_MAP: Partial<Record<View, import("@/lib/permissions").FeatureK
   admin: "nav_admin"
 };
 
+const PREVIEW_ROLES: { role: Role; label: string }[] = [
+  { role: "student_member", label: "Student" },
+  { role: "society_admin", label: "Society Admin" },
+  { role: "ukssc_staff", label: "UKSSC Staff" },
+  { role: "finance_reviewer", label: "Finance" },
+  { role: "alumni", label: "Alumni" },
+  { role: "sponsor", label: "Sponsor" },
+];
+
 export function Sidebar() {
-  const { view, setView, currentUser, can } = useApp();
+  const { view, setView, currentUser, viewAs, setViewAs, can } = useApp();
 
   const visibleNavItems = navItems.filter((item) => {
     const feature = NAV_FEATURE_MAP[item.id];
@@ -115,6 +126,35 @@ export function Sidebar() {
       </div>
 
       <div className="stitch-sidebar-bottom">
+        {currentUser.role === "super_admin" && (
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted)", marginBottom: 6 }}>
+              <Eye size={12} />
+              Preview as
+            </div>
+            <select
+              value={viewAs ?? ""}
+              onChange={(e) => setViewAs((e.target.value as Role) || null)}
+              style={{
+                width: "100%",
+                padding: "7px 10px",
+                borderRadius: 8,
+                border: viewAs ? "1.5px solid var(--primary)" : "1.5px solid rgba(208,194,213,0.4)",
+                background: viewAs ? "var(--primary-soft)" : "var(--surface-bright, #fff)",
+                fontSize: 12,
+                fontWeight: 600,
+                color: viewAs ? "var(--primary)" : "var(--muted)",
+                cursor: "pointer",
+                outline: "none",
+              }}
+            >
+              <option value="">Your view (Super Admin)</option>
+              {PREVIEW_ROLES.map(({ role, label }) => (
+                <option key={role} value={role}>{label}</option>
+              ))}
+            </select>
+          </div>
+        )}
         {can("submit_claims") && currentUser.societyId && (
           <button className="stitch-primary full" onClick={() => setView("claims")} type="button">Submit Reimbursement</button>
         )}
