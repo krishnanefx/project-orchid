@@ -355,6 +355,18 @@ export async function acceptConsentAction(userId: string): Promise<void> {
 
 // ── Member Management ─────────────────────────────────────────────────────────
 
+export async function getSocietyMembersAction(societyId: string): Promise<import("@/lib/types").Profile[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("society_id", societyId)
+    .order("created_at", { ascending: true })
+    .limit(200);
+  const { mapProfile } = await import("@/lib/orchid-service");
+  return (data ?? []).map((row) => mapProfile(row as Record<string, unknown>));
+}
+
 export async function getProfilesAction(limit = 100): Promise<import("@/lib/types").Profile[]> {
   const supabase = await createClient();
   const { data } = await supabase

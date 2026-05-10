@@ -5,6 +5,7 @@ import {
   CalendarBlank,
   Camera,
   CheckCircle,
+  DownloadSimple,
   FloppyDisk,
   Image as ImageIcon,
   Link as LinkIcon,
@@ -16,9 +17,10 @@ import {
   Warning,
   X
 } from "@phosphor-icons/react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/lib/app-context";
-import { createEventAction, updateSocietyAction } from "@/lib/actions";
+import { createEventAction, getSocietyMembersAction, updateSocietyAction } from "@/lib/actions";
+import { downloadCsv } from "@/lib/utils";
 import { universities } from "@/lib/data";
 import type { EventDraft, OrchidEvent } from "@/lib/types";
 
@@ -614,21 +616,47 @@ function MembersTab({
   announce: (msg: string) => void;
 }) {
   const [filter, setFilter] = useState<"all" | "committee" | "members">("all");
-  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [profiles, setProfiles] = useState<import("@/lib/types").Profile[]>([]);
+  const [loadingProfiles, setLoadingProfiles] = useState(true);
+
+  useEffect(() => {
+    getSocietyMembersAction(society.id)
+      .then(setProfiles)
+      .catch(() => {})
+      .finally(() => setLoadingProfiles(false));
+  }, [society.id]);
+
+  const committeeNames = new Set(
+    society.committee.map((e: string) => e.split("|")[0].trim().toLowerCase())
+  );
 
   const committeeRows = society.committee.map((entry: string, i: number) => {
     const parts = entry.split("|");
-    return {
-      id: `committee-${i}`,
-      name: parts[0].trim(),
-      role: parts[1]?.trim() ?? "Committee",
-      badge: "committee" as const,
-    };
+    return { id: `committee-${i}`, name: parts[0].trim(), role: parts[1]?.trim() ?? "Committee" };
   });
 
-  const memberCount = society.members - society.committee.length;
+  const memberProfiles = profiles.filter(
+    (p) => !committeeNames.has(p.name.toLowerCase())
+  );
 
-  const displayed = filter === "committee" ? committeeRows : filter === "members" ? [] : committeeRows;
+  const allRows = [
+    ...committeeRows.map((r) => ({ ...r, isCommitteeMember: true, email: "" })),
+    ...memberProfiles.map((p) => ({ id: p.id, name: p.name, role: p.course ?? "Member", isCommitteeMember: false, email: p.email })),
+  ];
+
+  const displayed = filter === "committee"
+    ? allRows.filter((r) => r.isCommitteeMember)
+    : filter === "members"
+    ? allRows.filter((r) => !r.isCommitteeMember)
+    : allRows;
+
+  function exportMembers() {
+    downloadCsv(`${society.name.replace(/\s+/g, "-").toLowerCase()}-members.csv`, [
+      ["Name", "Email", "Role", "Type"],
+      ...allRows.map((r) => [r.name, r.email, r.role, r.isCommitteeMember ? "Committee" : "Member"]),
+    ]);
+    announce("Member list exported.");
+  }
 
   return (
     <div>
@@ -652,66 +680,59 @@ function MembersTab({
                 textTransform: "capitalize"
               }}
             >
-              {f === "all" ? "All" : f === "committee" ? "Committee" : "Members"}
+              {f === "all" ? `All (${allRows.length})` : f === "committee" ? `Committee (${committeeRows.length})` : `Members (${memberProfiles.length})`}
             </button>
           ))}
         </div>
-        <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
-          {society.committee.length} committee &middot; {memberCount} verified members
-        </p>
-      </div>
-
-      <div style={{ display: "grid", gap: 10 }}>
-        {displayed.map((row) => (
-          <div key={row.id} className="stitch-card" style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: "50%", background: "var(--primary-soft)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 12, fontWeight: 700, color: "var(--primary)", flexShrink: 0
-            }}>
-              {row.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)" }}>{row.name}</div>
-              <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>{row.role}</div>
-            </div>
-            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "3px 10px", borderRadius: 999, background: "var(--secondary-container)", color: "var(--on-secondary-container)" }}>
-              Committee
-            </span>
-            {isCommittee && (
-              <button
-                type="button"
-                style={{ border: 0, background: "none", cursor: "pointer", color: "var(--muted)", padding: 6, borderRadius: 6, display: "flex" }}
-                onClick={() => announce(`Resent verification to ${row.name}.`)}
-              >
-                <User size={15} />
-              </button>
-            )}
-          </div>
-        ))}
-
-        {(filter === "all" || filter === "members") && memberCount > 0 && (
-          <div className="stitch-card" style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: 12, background: "var(--surface-container, #faf7fb)" }}>
-            <UsersThree size={20} style={{ color: "var(--muted)" }} />
-            <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
-              {memberCount} additional verified members — full member management coming with the Supabase data layer.
-            </p>
-          </div>
+        {isCommittee && allRows.length > 0 && (
+          <button type="button" className="stitch-secondary" onClick={exportMembers} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
+            <DownloadSimple size={14} /> Export CSV
+          </button>
         )}
       </div>
+
+      {loadingProfiles ? (
+        <p style={{ color: "var(--muted)", fontSize: 13, padding: "16px 0" }}>Loading members…</p>
+      ) : (
+        <div style={{ display: "grid", gap: 10 }}>
+          {displayed.length === 0 && (
+            <p style={{ color: "var(--muted)", fontSize: 13, padding: "8px 0" }}>
+              {filter === "members" ? "No non-committee members yet." : "No members yet."}
+            </p>
+          )}
+          {displayed.map((row) => (
+            <div key={row.id} className="stitch-card" style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: "50%", background: "var(--primary-soft)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 12, fontWeight: 700, color: "var(--primary)", flexShrink: 0
+              }}>
+                {row.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase() || "?"}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)" }}>{row.name || "(No name)"}</div>
+                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>
+                  {row.role}{row.email ? ` · ${row.email}` : ""}
+                </div>
+              </div>
+              <span style={{
+                fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "3px 10px", borderRadius: 999,
+                background: row.isCommitteeMember ? "var(--secondary-container)" : "var(--surface-container)",
+                color: row.isCommitteeMember ? "var(--on-secondary-container)" : "var(--muted)"
+              }}>
+                {row.isCommitteeMember ? "Committee" : "Member"}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {isCommittee && (
         <div className="stitch-card" style={{ padding: 20, marginTop: 16 }}>
           <h4 style={{ fontSize: 13, fontWeight: 700, color: "var(--on-surface)", marginBottom: 12 }}>Admin Actions</h4>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-            <button type="button" className="stitch-secondary" onClick={() => announce("Invite link copied to clipboard.")}>
+            <button type="button" className="stitch-secondary" onClick={() => announce("Share your society page link with prospective members.")}>
               <Plus size={14} /> Invite Member
-            </button>
-            <button type="button" className="stitch-secondary" onClick={() => announce("Member export sent to your email.")}>
-              Export Member List (CSV)
-            </button>
-            <button type="button" className="stitch-secondary" onClick={() => announce("Bulk verification email sent.")}>
-              Send Verification Reminder
             </button>
           </div>
         </div>
