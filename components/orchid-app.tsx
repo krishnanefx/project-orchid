@@ -25,12 +25,48 @@ function ViewSkeleton() {
   return <div className="stitch-main" style={{ paddingTop: 40 }} aria-busy="true" aria-label="Loading…" />;
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  student_member: "Student",
+  society_admin: "Society Admin",
+  ukssc_staff: "UKSSC Staff",
+  finance_reviewer: "Finance Reviewer",
+  alumni: "Alumni",
+  sponsor: "Sponsor",
+};
+
 function AppShell() {
-  const { view, toast } = useApp();
+  const { view, toast, viewAs, setViewAs } = useApp();
   return (
     <div className="stitch-app">
       <Sidebar />
       <div className="stitch-body">
+        {viewAs && (
+          <div role="status" style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            padding: "9px 20px",
+            background: "oklch(0.55 0.18 295)",
+            color: "#fff",
+            fontSize: 12,
+            fontWeight: 600,
+            flexShrink: 0,
+          }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ opacity: 0.75 }}>Previewing as</span>
+              <strong>{ROLE_LABELS[viewAs] ?? viewAs}</strong>
+              <span style={{ opacity: 0.6 }}>— nav and features reflect this role</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setViewAs(null)}
+              style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 6, color: "#fff", fontSize: 11, fontWeight: 700, padding: "4px 12px", cursor: "pointer" }}
+            >
+              Exit preview
+            </button>
+          </div>
+        )}
         <TopBar />
         {toast ? <div className="toast" role="status" aria-live="polite">{toast}</div> : null}
         <ErrorBoundary>
