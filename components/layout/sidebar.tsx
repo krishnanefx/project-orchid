@@ -39,6 +39,7 @@ export function Sidebar() {
   const isAdmin = ADMIN_ROLES.includes(currentUser.role);
 
   const hasSociety = !!currentUser.societyId;
+  const canSubmitClaim = currentUser.societyId !== undefined && ["student_member", "society_admin"].includes(currentUser.role);
   const visibleNavItems = navItems.filter((item) => {
     if (item.id === "admin") return isAdmin;
     if (item.id === "society-admin") return hasSociety;
@@ -104,7 +105,9 @@ export function Sidebar() {
       </div>
 
       <div className="stitch-sidebar-bottom">
-        <button className="stitch-primary full" onClick={() => setView("claims")} type="button">Submit Reimbursement</button>
+        {canSubmitClaim && (
+          <button className="stitch-primary full" onClick={() => setView("claims")} type="button">Submit Reimbursement</button>
+        )}
         <button className="stitch-nav-item" type="button"><GearSix size={17} /> Settings</button>
         <button className="stitch-nav-item" type="button"><SignOut size={17} /> Logout</button>
       </div>
