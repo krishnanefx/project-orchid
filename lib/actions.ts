@@ -343,6 +343,14 @@ export async function joinSocietyAction(societyId: string, userId: string): Prom
   await supabase.from("societies").update({ members }).eq("id", societyId);
 }
 
+// ── Consent ───────────────────────────────────────────────────────────────────
+
+export async function acceptConsentAction(userId: string): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("profiles").update({ consent_status: "accepted" }).eq("id", userId);
+  if (error) throw new Error(error.message);
+}
+
 // ── Member Management ─────────────────────────────────────────────────────────
 
 export async function getProfilesAction(limit = 100): Promise<import("@/lib/types").Profile[]> {
