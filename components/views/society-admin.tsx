@@ -19,7 +19,7 @@ import {
 } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/lib/app-context";
-import { createEventAction, getSocietyMembersAction, updateSocietyAction } from "@/lib/actions";
+import { checkInAction, createEventAction, getEventRsvpsAction, getSocietyMembersAction, updateSocietyAction } from "@/lib/actions";
 import { downloadCsv } from "@/lib/utils";
 import { universities } from "@/lib/data";
 import type { EventDraft, OrchidEvent } from "@/lib/types";
@@ -447,6 +447,10 @@ function EventsTab({
     allEvents.filter((e) => e.societyIds.includes(societyId))
   );
   const [showForm, setShowForm] = useState(false);
+  const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
+  const [rsvpLists, setRsvpLists] = useState<Record<string, { id: string; name: string; email: string }[]>>({});
+  const [loadingRsvps, setLoadingRsvps] = useState<string | null>(null);
+  const [checkingIn, setCheckingIn] = useState<string | null>(null);
   const [draft, setDraft] = useState<EventDraft>({
     title: "",
     type: "society",
@@ -495,6 +499,35 @@ function EventsTab({
     setShowForm(false);
     setEditId(null);
     setDraft({ title: "", type: "society", startsAt: "", location: "", capacity: 50 });
+  }
+
+  function toggleRsvpList(event: OrchidEvent) {
+    if (expandedEventId === event.id) {
+      setExpandedEventId(null);
+      return;
+    }
+    setExpandedEventId(event.id);
+    if (!rsvpLists[event.id]) {
+      setLoadingRsvps(event.id);
+      getEventRsvpsAction(event.id)
+        .then((list) => setRsvpLists((prev) => ({ ...prev, [event.id]: list })))
+        .catch(() => setRsvpLists((prev) => ({ ...prev, [event.id]: [] })))
+        .finally(() => setLoadingRsvps(null));
+    }
+  }
+
+  async function handleCheckIn(event: OrchidEvent) {
+    setCheckingIn(event.id);
+    setLocalEvents((prev) => prev.map((e) => e.id === event.id ? { ...e, checkedIn: e.checkedIn + 1 } : e));
+    setAllEvents(allEvents.map((e) => e.id === event.id ? { ...e, checkedIn: e.checkedIn + 1 } : e));
+    try {
+      await checkInAction(event.id);
+      announce("Check-in recorded.");
+    } catch {
+      announce("Check-in failed — please try again.");
+    } finally {
+      setCheckingIn(null);
+    }
   }
 
   function handleEdit(event: OrchidEvent) {
@@ -571,28 +604,68 @@ function EventsTab({
             const day = date.toLocaleDateString("en-GB", { day: "numeric", timeZone: "UTC" });
             const statusColors = EVENT_STATUS_COLORS[event.status] ?? EVENT_STATUS_COLORS.closed;
             return (
-              <div key={event.id} className="stitch-card" style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: 16 }}>
-                <div style={{ textAlign: "center", minWidth: 44, flexShrink: 0 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "var(--primary)", letterSpacing: "0.04em" }}>{month}</div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: "var(--on-surface)", lineHeight: 1.1 }}>{day}</div>
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)", marginBottom: 2 }}>{event.title}</div>
-                  <div style={{ fontSize: 12, color: "var(--muted)" }}>
-                    {event.location} &middot; {event.rsvps}/{event.capacity} RSVPs &middot; {event.checkedIn} checked in
+              <div key={event.id} className="stitch-card" style={{ padding: 0, overflow: "hidden" }}>
+                <div style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: 16 }}>
+                  <div style={{ textAlign: "center", minWidth: 44, flexShrink: 0 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "var(--primary)", letterSpacing: "0.04em" }}>{month}</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: "var(--on-surface)", lineHeight: 1.1 }}>{day}</div>
                   </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)", marginBottom: 2 }}>{event.title}</div>
+                    <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                      {event.location} &middot; {event.rsvps}/{event.capacity} RSVPs &middot; {event.checkedIn} checked in
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "3px 10px", borderRadius: 999, background: statusColors.bg, color: statusColors.color, flexShrink: 0 }}>
+                    {event.status}
+                  </span>
+                  {isCommittee && (
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button
+                        type="button"
+                        onClick={() => toggleRsvpList(event)}
+                        title="View RSVPs"
+                        style={{ border: 0, background: expandedEventId === event.id ? "var(--primary-soft)" : "none", cursor: "pointer", color: "var(--primary)", padding: 6, borderRadius: 6, display: "flex", fontSize: 10, fontWeight: 700, gap: 4, alignItems: "center" }}
+                      >
+                        <UsersThree size={14} weight="fill" />
+                        {event.rsvps}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleCheckIn(event)}
+                        disabled={checkingIn === event.id}
+                        title="Record manual check-in"
+                        style={{ border: 0, background: "none", cursor: "pointer", color: "var(--primary)", padding: 6, borderRadius: 6, display: "flex" }}
+                      >
+                        <CheckCircle size={15} weight={checkingIn === event.id ? "fill" : "regular"} />
+                      </button>
+                      <button type="button" onClick={() => handleEdit(event)} style={{ border: 0, background: "none", cursor: "pointer", color: "var(--muted)", padding: 6, borderRadius: 6, display: "flex" }}>
+                        <PencilSimple size={15} />
+                      </button>
+                      <button type="button" onClick={() => handleDelete(event.id)} style={{ border: 0, background: "none", cursor: "pointer", color: "var(--muted)", padding: 6, borderRadius: 6, display: "flex" }}>
+                        <Trash size={15} />
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "3px 10px", borderRadius: 999, background: statusColors.bg, color: statusColors.color, flexShrink: 0 }}>
-                  {event.status}
-                </span>
-                {isCommittee && (
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button type="button" onClick={() => handleEdit(event)} style={{ border: 0, background: "none", cursor: "pointer", color: "var(--primary)", padding: 6, borderRadius: 6, display: "flex" }}>
-                      <PencilSimple size={15} />
-                    </button>
-                    <button type="button" onClick={() => handleDelete(event.id)} style={{ border: 0, background: "none", cursor: "pointer", color: "var(--muted)", padding: 6, borderRadius: 6, display: "flex" }}>
-                      <Trash size={15} />
-                    </button>
+                {expandedEventId === event.id && (
+                  <div style={{ borderTop: "1px solid var(--outline-variant, rgba(208,194,213,0.3))", padding: "12px 20px", background: "var(--surface-container, #faf7fb)" }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted)", marginBottom: 8 }}>
+                      RSVP List
+                    </p>
+                    {loadingRsvps === event.id ? (
+                      <p style={{ fontSize: 13, color: "var(--muted)" }}>Loading…</p>
+                    ) : (rsvpLists[event.id] ?? []).length === 0 ? (
+                      <p style={{ fontSize: 13, color: "var(--muted)" }}>No RSVPs yet.</p>
+                    ) : (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                        {(rsvpLists[event.id] ?? []).map((r) => (
+                          <span key={r.id} style={{ fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 999, background: "var(--primary-soft)", color: "var(--primary)" }}>
+                            {r.name || r.email || "Member"}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

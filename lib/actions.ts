@@ -392,6 +392,31 @@ export async function verifyMemberAction(userId: string): Promise<void> {
 
 // ── Event RSVPs ───────────────────────────────────────────────────────────────
 
+export async function getEventRsvpsAction(eventId: string): Promise<{ id: string; name: string; email: string }[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("event_rsvps")
+    .select("profile_id, profiles(id, full_name, email)")
+    .eq("event_id", eventId)
+    .limit(200);
+  return (data ?? []).map((row) => {
+    const r = row as Record<string, unknown>;
+    const profile = r.profiles as Record<string, unknown> | null;
+    return {
+      id: (profile?.id ?? r.profile_id) as string,
+      name: ((profile?.full_name ?? "") as string) || "Member",
+      email: (profile?.email ?? "") as string,
+    };
+  });
+}
+
+export async function checkInAction(eventId: string): Promise<void> {
+  const supabase = await createClient();
+  const { data: ev } = await supabase.from("events").select("checked_in").eq("id", eventId).single();
+  const current = ((ev as Record<string, unknown>)?.checked_in as number) ?? 0;
+  await supabase.from("events").update({ checked_in: current + 1 }).eq("id", eventId);
+}
+
 export async function rsvpEventAction(
   eventId: string,
   userId: string
