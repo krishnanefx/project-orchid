@@ -112,7 +112,7 @@ export function Sidebar() {
         {can("submit_claims") && (
           <button className="stitch-primary full" onClick={() => setView("claims")} type="button">Submit Reimbursement</button>
         )}
-        <button className="stitch-nav-item" type="button"><GearSix size={17} /> Settings</button>
+        <button className="stitch-nav-item" type="button" onClick={() => setView("settings")}><GearSix size={17} /> Settings</button>
         <form action="/api/auth/signout" method="POST" style={{ width: "100%" }}>
           <button className="stitch-nav-item" type="submit" style={{ width: "100%" }}><SignOut size={17} /> Logout</button>
         </form>
