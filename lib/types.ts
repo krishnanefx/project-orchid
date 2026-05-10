@@ -22,6 +22,7 @@ export type Society = {
   id: string;
   name: string;
   universityId: string;
+  universitySlug?: string;
   logo: string;
   description: string;
   bio?: string;

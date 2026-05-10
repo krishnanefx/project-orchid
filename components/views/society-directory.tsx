@@ -23,7 +23,7 @@ export function SocietyDirectory() {
             <p style={{ color: "var(--muted)", gridColumn: "1 / -1" }}>No societies registered yet.</p>
           )}
           {localSocieties.map((society) => {
-            const university = universities.find((u) => u.id === society.universityId);
+            const university = universities.find((u) => u.id === (society.universitySlug || society.universityId));
             return (
               <article className="stitch-card small-society" key={society.id}>
                 <div className="letter-logo">{society.logo}</div>

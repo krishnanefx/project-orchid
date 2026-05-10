@@ -86,7 +86,7 @@ export function ClaimsView() {
             <button className="text-action" type="button" onClick={exportClaims}><DownloadSimple size={16} /> Export</button>
           </div>
           {localClaims.length === 0 ? (
-            <p style={{ color: "var(--text-secondary)", padding: "16px 0" }}>No claims yet. Submit one using the form.</p>
+            <p style={{ color: "var(--muted)", padding: "16px 0" }}>No claims yet. Submit one using the form.</p>
           ) : (
             <table>
               <thead><tr><th>Claimant</th><th>Purpose</th><th>Amount</th><th>Status</th></tr></thead>
