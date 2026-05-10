@@ -1,13 +1,19 @@
 "use client";
 
 import { Bell, List, MagnifyingGlass, Question } from "@phosphor-icons/react";
-import Image from "next/image";
 import { useApp } from "@/lib/app-context";
 import { navItems } from "@/components/layout/sidebar";
-import { imageUrls } from "@/components/ui/primitives";
 
 export function TopBar() {
-  const { view, setView } = useApp();
+  const { view, setView, currentUser } = useApp();
+
+  const initials = currentUser.name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase() || "?";
+
   return (
     <header className="stitch-topbar">
       <div className="mobile-brand">
@@ -28,7 +34,28 @@ export function TopBar() {
       <div className="top-actions">
         <button className="icon-button notify" type="button"><Bell size={18} /></button>
         <button className="icon-button hide-sm" type="button"><Question size={18} /></button>
-        <Image className="profile-image" src={imageUrls.profile} alt="Wei profile" width={32} height={32} />
+        <button
+          type="button"
+          onClick={() => setView("settings")}
+          aria-label={`Open profile settings for ${currentUser.name}`}
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: "50%",
+            background: "var(--primary-soft)",
+            border: "2px solid var(--primary)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 11,
+            fontWeight: 800,
+            color: "var(--primary)",
+            cursor: "pointer",
+            flexShrink: 0,
+          }}
+        >
+          {initials}
+        </button>
       </div>
     </header>
   );
