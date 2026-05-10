@@ -18,7 +18,8 @@ import {
 } from "@phosphor-icons/react";
 import { useRef, useState } from "react";
 import { useApp } from "@/lib/app-context";
-import { universities, events as seedEvents } from "@/lib/data";
+import { updateSocietyAction } from "@/lib/actions";
+import { universities } from "@/lib/data";
 import type { EventDraft, OrchidEvent } from "@/lib/types";
 
 type Tab = "profile" | "events" | "members" | "media";
@@ -197,11 +198,13 @@ export function SocietyAdmin() {
           onSave={(patch) => {
             if (!isCommittee) return;
             setSaving(true);
-            setTimeout(() => {
-              updateSociety(society.id, patch);
+            updateSociety(society.id, patch);
+            updateSocietyAction(society.id, patch).catch(() => {
+              announce("Failed to save — changes saved locally only.");
+            }).finally(() => {
               setSaving(false);
               announce("Society profile saved.");
-            }, 600);
+            });
           }}
         />
       )}
@@ -242,7 +245,7 @@ function ProfileTab({
   saving,
   onSave
 }: {
-  society: ReturnType<typeof import("@/lib/data").societies.find>;
+  society: import("@/lib/types").Society | undefined;
   isCommittee: boolean;
   saving: boolean;
   onSave: (patch: Record<string, unknown>) => void;
@@ -434,8 +437,9 @@ function EventsTab({
   isCommittee: boolean;
   announce: (msg: string) => void;
 }) {
+  const { localEvents: allEvents, setLocalEvents: setAllEvents } = useApp();
   const [localEvents, setLocalEvents] = useState<OrchidEvent[]>(
-    seedEvents.filter((e) => e.societyIds.includes(societyId))
+    allEvents.filter((e) => e.societyIds.includes(societyId))
   );
   const [showForm, setShowForm] = useState(false);
   const [draft, setDraft] = useState<EventDraft>({
@@ -453,9 +457,9 @@ function EventsTab({
       return;
     }
     if (editId) {
-      setLocalEvents((prev) =>
-        prev.map((e) => e.id === editId ? { ...e, ...draft, societyIds: e.societyIds } : e)
-      );
+      const updated = localEvents.map((e) => e.id === editId ? { ...e, ...draft, societyIds: e.societyIds } : e);
+      setLocalEvents(updated);
+      setAllEvents(allEvents.map((e) => e.id === editId ? { ...e, ...draft, societyIds: e.societyIds } : e));
       announce("Event updated.");
     } else {
       const newEvent: OrchidEvent = {
@@ -467,6 +471,7 @@ function EventsTab({
         status: "open"
       };
       setLocalEvents((prev) => [newEvent, ...prev]);
+      setAllEvents([newEvent, ...allEvents]);
       announce(`Event "${draft.title}" created.`);
     }
     setShowForm(false);
@@ -482,6 +487,7 @@ function EventsTab({
 
   function handleDelete(id: string) {
     setLocalEvents((prev) => prev.filter((e) => e.id !== id));
+    setAllEvents(allEvents.filter((e) => e.id !== id));
     announce("Event removed.");
   }
 
@@ -587,14 +593,14 @@ function MembersTab({
   isCommittee,
   announce
 }: {
-  society: NonNullable<ReturnType<typeof import("@/lib/data").societies.find>>;
+  society: import("@/lib/types").Society;
   isCommittee: boolean;
   announce: (msg: string) => void;
 }) {
   const [filter, setFilter] = useState<"all" | "committee" | "members">("all");
   const [notes, setNotes] = useState<Record<string, string>>({});
 
-  const committeeRows = society.committee.map((name, i) => ({
+  const committeeRows = society.committee.map((name: string, i: number) => ({
     id: `committee-${i}`,
     name,
     role: "Committee",
@@ -644,7 +650,7 @@ function MembersTab({
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 12, fontWeight: 700, color: "var(--primary)", flexShrink: 0
             }}>
-              {row.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+              {row.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)" }}>{row.name}</div>
@@ -702,7 +708,7 @@ function MediaTab({
   isCommittee,
   onSave
 }: {
-  society: NonNullable<ReturnType<typeof import("@/lib/data").societies.find>>;
+  society: import("@/lib/types").Society;
   isCommittee: boolean;
   onSave: (patch: Record<string, unknown>) => void;
 }) {

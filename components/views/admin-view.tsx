@@ -1,14 +1,13 @@
 "use client";
 
-import { ShieldCheck } from "@phosphor-icons/react";
+import { Database, ShieldCheck } from "@phosphor-icons/react";
 import { useApp } from "@/lib/app-context";
-import { societies } from "@/lib/data";
 import { downloadCsv } from "@/lib/utils";
 import { Metric, PageHeader, TimelineItem } from "@/components/ui/primitives";
 
 export function AdminView() {
-  const { setView } = useApp();
-  const totalMembers = societies.reduce((sum, s) => sum + s.members, 0);
+  const { setView, localSocieties } = useApp();
+  const totalMembers = localSocieties.reduce((sum, s) => sum + s.members, 0);
 
   function exportAdminReport() {
     downloadCsv("project-orchid-admin-report.csv", [
@@ -41,6 +40,24 @@ export function AdminView() {
           <TimelineItem tone="muted" text="Finance marked one reimbursement paid" time="Today" />
         </article>
       </section>
+
+      {/* Manage Data card */}
+      <button
+        type="button"
+        className="stitch-card"
+        style={{ padding: "20px 24px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", marginTop: 4, width: "100%", border: "none", textAlign: "left" }}
+        onClick={() => setView("admin-data")}
+        aria-label="Manage data — add societies, events, resources and forum boards"
+      >
+        <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--primary-soft)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <Database size={20} style={{ color: "var(--primary)" }} weight="fill" />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--on-surface)", marginBottom: 2 }}>Manage Data</div>
+          <div style={{ fontSize: 13, color: "var(--muted)" }}>Add and update societies, events, resources, and forum boards</div>
+        </div>
+        <span style={{ fontSize: 18, color: "var(--muted)" }} aria-hidden="true">›</span>
+      </button>
 
       {/* Access Control card */}
       <button

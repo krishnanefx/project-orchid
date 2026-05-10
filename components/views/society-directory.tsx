@@ -2,11 +2,11 @@
 
 import { CheckCircle, Leaf, MapPin, UsersThree } from "@phosphor-icons/react";
 import { useApp } from "@/lib/app-context";
+import { universities } from "@/lib/data";
 import { PageHeader } from "@/components/ui/primitives";
-import { societies, universities } from "@/lib/data";
 
 export function SocietyDirectory() {
-  const { joinedSociety, setJoinedSociety, announce, viewSociety } = useApp();
+  const { joinedSociety, setJoinedSociety, announce, viewSociety, localSocieties } = useApp();
 
   function joinSociety(name: string, id: string) {
     setJoinedSociety(name);
@@ -19,7 +19,10 @@ export function SocietyDirectory() {
       <section>
         <div className="subheading"><Leaf size={18} weight="fill" /><h3>All Societies</h3></div>
         <div className="all-societies-grid">
-          {societies.map((society) => {
+          {localSocieties.length === 0 && (
+            <p style={{ color: "var(--muted)", gridColumn: "1 / -1" }}>No societies registered yet.</p>
+          )}
+          {localSocieties.map((society) => {
             const university = universities.find((u) => u.id === society.universityId);
             return (
               <article className="stitch-card small-society" key={society.id}>
