@@ -50,6 +50,29 @@ export async function updateClaimStatusAction(id: string, status: ClaimStatus): 
   if (error) throw new Error(error.message);
 }
 
+// ── Profile ───────────────────────────────────────────────────────────────────
+
+export async function updateProfileAction(
+  userId: string,
+  patch: {
+    fullName?: string;
+    course?: string;
+    studyYear?: string;
+    dietaryNeeds?: string;
+    accessibilityNeeds?: string;
+  }
+): Promise<void> {
+  const supabase = await createClient();
+  const dbPatch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (patch.fullName !== undefined) dbPatch.full_name = patch.fullName;
+  if (patch.course !== undefined) dbPatch.course = patch.course;
+  if (patch.studyYear !== undefined) dbPatch.study_year = patch.studyYear;
+  if (patch.dietaryNeeds !== undefined) dbPatch.dietary_needs = patch.dietaryNeeds;
+  if (patch.accessibilityNeeds !== undefined) dbPatch.accessibility_needs = patch.accessibilityNeeds;
+  const { error } = await supabase.from("profiles").update(dbPatch).eq("id", userId);
+  if (error) throw new Error(error.message);
+}
+
 // ── Societies ─────────────────────────────────────────────────────────────────
 
 export async function createSocietyAction(input: {

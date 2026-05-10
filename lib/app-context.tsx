@@ -5,7 +5,7 @@ import { resolveUniversityByEmail } from "@/lib/data";
 import type { ClaimStatus, ForumBoard, OrchidEvent, Profile, ReimbursementClaim, Resource, Role, Society } from "@/lib/types";
 import { DEFAULT_PERMISSIONS, type FeatureKey, type PermissionsMatrix } from "@/lib/permissions";
 
-export type View = "dashboard" | "societies" | "society-detail" | "society-admin" | "events" | "forums" | "resources" | "admin" | "admin-data" | "claims" | "access-control";
+export type View = "dashboard" | "societies" | "society-detail" | "society-admin" | "events" | "forums" | "resources" | "admin" | "admin-data" | "claims" | "access-control" | "settings";
 
 export const ADMIN_ROLES: Role[] = ["super_admin", "ukssc_staff"];
 
