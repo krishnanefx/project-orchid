@@ -1,18 +1,30 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase-server";
 
 export const metadata: Metadata = {
-  title: "Login | Project Orchid"
+  title: "Login | Project Orchid",
+  description: "Sign in to your Project Orchid account and access your Singaporean student community hub."
 };
 
-async function loginAction(_formData: FormData) {
+async function loginAction(formData: FormData) {
   "use server";
-  // TODO: validate credentials with Supabase Auth
+  const email = formData.get("email") as string;
+  const password = formData.get("password") as string;
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    redirect(`/login?error=${encodeURIComponent(error.message)}`);
+  }
+
   redirect("/dashboard");
 }
 
-export default function LoginPage() {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; registered?: string }> }) {
+  const { error, registered } = await searchParams;
   return (
     <div className="bg-background min-h-screen flex flex-col font-body-md text-on-background">
       <main className="flex-grow flex items-center justify-center orchid-gradient botanical-pattern px-4 py-12">
@@ -40,6 +52,16 @@ export default function LoginPage() {
                 <p className="font-body-sm text-on-surface-variant">Access your community dashboard and society hubs.</p>
               </div>
 
+              {registered === "true" && (
+                <div className="mb-6 px-4 py-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm font-medium">
+                  Account created. Check your email to confirm before logging in.
+                </div>
+              )}
+              {error && (
+                <div className="mb-6 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm font-medium">
+                  {decodeURIComponent(error)}
+                </div>
+              )}
               <form className="space-y-6" action={loginAction}>
                 <div>
                   <label className="block font-label text-label text-on-surface mb-2" htmlFor="email">

@@ -43,13 +43,12 @@ export function AdminView() {
       </section>
 
       {/* Access Control card */}
-      <div
+      <button
+        type="button"
         className="stitch-card"
-        style={{ padding: "20px 24px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", marginTop: 4 }}
+        style={{ padding: "20px 24px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", marginTop: 4, width: "100%", border: "none", textAlign: "left" }}
         onClick={() => setView("access-control")}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setView("access-control"); }}
+        aria-label="Configure access control — manage role permissions"
       >
         <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--primary-soft)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           <ShieldCheck size={20} style={{ color: "var(--primary)" }} weight="fill" />
@@ -58,8 +57,8 @@ export function AdminView() {
           <div style={{ fontSize: 15, fontWeight: 700, color: "var(--on-surface)", marginBottom: 2 }}>Access Control</div>
           <div style={{ fontSize: 13, color: "var(--muted)" }}>Configure which roles can see and do what across the platform</div>
         </div>
-        <span style={{ fontSize: 18, color: "var(--muted)" }}>›</span>
-      </div>
+        <span style={{ fontSize: 18, color: "var(--muted)" }} aria-hidden="true">›</span>
+      </button>
     </main>
   );
 }

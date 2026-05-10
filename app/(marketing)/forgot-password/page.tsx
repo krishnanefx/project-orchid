@@ -1,14 +1,25 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase-server";
+import { headers } from "next/headers";
 
 export const metadata: Metadata = {
   title: "Reset Password | Project Orchid"
 };
 
-async function forgotPasswordAction(_formData: FormData) {
+async function forgotPasswordAction(formData: FormData) {
   "use server";
-  // TODO: send reset email via Supabase Auth
+  const email = formData.get("email") as string;
+  const headersList = await headers();
+  const origin = headersList.get("origin") ?? "https://project-orchid.vercel.app";
+
+  const supabase = await createClient();
+  await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${origin}/api/auth/callback?next=/dashboard`
+  });
+
+  // Always redirect to sent state (avoid email enumeration)
   redirect("/forgot-password?sent=true");
 }
 

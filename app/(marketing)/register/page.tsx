@@ -1,18 +1,35 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase-server";
 
 export const metadata: Metadata = {
-  title: "Join Project Orchid"
+  title: "Join Project Orchid",
+  description: "Create your Project Orchid account and connect with Singaporean student societies across the UK."
 };
 
-async function registerAction(_formData: FormData) {
+async function registerAction(formData: FormData) {
   "use server";
-  // TODO: create account with Supabase Auth
-  redirect("/dashboard");
+  const name = formData.get("name") as string;
+  const email = formData.get("email") as string;
+  const password = formData.get("password") as string;
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { data: { name } }
+  });
+
+  if (error) {
+    redirect(`/register?error=${encodeURIComponent(error.message)}`);
+  }
+
+  redirect("/login?registered=true");
 }
 
-export default function RegisterPage() {
+export default async function RegisterPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+  const { error } = await searchParams;
   return (
     <div className="bg-background min-h-screen flex flex-col font-body-md text-on-background">
       <main className="flex-grow flex items-center justify-center orchid-gradient botanical-pattern px-4 py-12">
@@ -40,6 +57,11 @@ export default function RegisterPage() {
                 <p className="font-body-sm text-on-surface-variant">Create your profile and connect with Singaporean students across the UK.</p>
               </div>
 
+              {error && (
+                <div className="mb-6 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm font-medium">
+                  {decodeURIComponent(error)}
+                </div>
+              )}
               <form className="space-y-5" action={registerAction}>
                 <div>
                   <label className="block font-label text-label text-on-surface mb-2" htmlFor="name">
