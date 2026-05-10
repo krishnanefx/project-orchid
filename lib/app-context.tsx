@@ -1,10 +1,10 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { claims as seedClaims, profiles } from "@/lib/data";
-import type { ClaimStatus, Profile, ReimbursementClaim, Role } from "@/lib/types";
+import { claims as seedClaims, profiles, societies as seedSocieties } from "@/lib/data";
+import type { ClaimStatus, Profile, ReimbursementClaim, Role, Society } from "@/lib/types";
 
-export type View = "dashboard" | "societies" | "society-detail" | "events" | "forums" | "resources" | "admin" | "claims";
+export type View = "dashboard" | "societies" | "society-detail" | "society-admin" | "events" | "forums" | "resources" | "admin" | "claims";
 
 export const ADMIN_ROLES: Role[] = ["super_admin", "ukssc_staff"];
 
@@ -34,6 +34,8 @@ type AppState = {
   setCurrentUser: (profile: Profile) => void;
   currentSocietyId: string | null;
   viewSociety: (id: string) => void;
+  localSocieties: Society[];
+  updateSociety: (id: string, patch: Partial<Society>) => void;
 };
 
 const AppContext = createContext<AppState | null>(null);
@@ -45,6 +47,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState(`University email verified: ${profiles[0].email} maps to UCL Singapore Society.`);
   const [rsvp, setRsvp] = useState(false);
   const [joinedSociety, setJoinedSociety] = useState("UCL Singapore Society");
+  const [localSocieties, setLocalSocieties] = useState<Society[]>(seedSocieties);
   const [claimStatuses, setClaimStatuses] = useState<Record<string, ClaimStatus>>({});
   const [localClaims, setLocalClaims] = useState<ReimbursementClaim[]>(seedClaims);
   const [threads, setThreads] = useState<ThreadItem[]>([
@@ -76,8 +79,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setView("society-detail");
   }
 
+  function updateSociety(id: string, patch: Partial<Society>) {
+    setLocalSocieties((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+  }
+
   return (
-    <AppContext.Provider value={{ view, setView, toast, announce, rsvp, setRsvp, joinedSociety, setJoinedSociety, claimStatuses, setClaimStatuses, localClaims, setLocalClaims, threads, setThreads, currentUser, setCurrentUser, currentSocietyId, viewSociety }}>
+    <AppContext.Provider value={{ view, setView, toast, announce, rsvp, setRsvp, joinedSociety, setJoinedSociety, claimStatuses, setClaimStatuses, localClaims, setLocalClaims, threads, setThreads, currentUser, setCurrentUser, currentSocietyId, viewSociety, localSocieties, updateSociety }}>
       {children}
     </AppContext.Provider>
   );
