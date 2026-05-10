@@ -18,7 +18,7 @@ import {
 } from "@phosphor-icons/react";
 import { useRef, useState } from "react";
 import { useApp } from "@/lib/app-context";
-import { updateSocietyAction } from "@/lib/actions";
+import { createEventAction, updateSocietyAction } from "@/lib/actions";
 import { universities } from "@/lib/data";
 import type { EventDraft, OrchidEvent } from "@/lib/types";
 
@@ -451,7 +451,7 @@ function EventsTab({
   });
   const [editId, setEditId] = useState<string | null>(null);
 
-  function handleSave() {
+  async function handleSave() {
     if (!draft.title.trim() || !draft.startsAt || !draft.location.trim()) {
       announce("Please fill in all required fields.");
       return;
@@ -462,7 +462,7 @@ function EventsTab({
       setAllEvents(allEvents.map((e) => e.id === editId ? { ...e, ...draft, societyIds: e.societyIds } : e));
       announce("Event updated.");
     } else {
-      const newEvent: OrchidEvent = {
+      const optimistic: OrchidEvent = {
         id: `evt-${Date.now()}`,
         ...draft,
         societyIds: [societyId],
@@ -470,9 +470,20 @@ function EventsTab({
         checkedIn: 0,
         status: "open"
       };
-      setLocalEvents((prev) => [newEvent, ...prev]);
-      setAllEvents([newEvent, ...allEvents]);
+      setLocalEvents((prev) => [optimistic, ...prev]);
+      setAllEvents([optimistic, ...allEvents]);
       announce(`Event "${draft.title}" created.`);
+      createEventAction({
+        title: draft.title,
+        type: draft.type,
+        startsAt: draft.startsAt,
+        location: draft.location,
+        capacity: draft.capacity,
+        societyIds: [societyId],
+      }).then((saved) => {
+        setAllEvents(allEvents.map((e) => e.id === optimistic.id ? saved : e));
+        setLocalEvents(localEvents.map((e) => e.id === optimistic.id ? saved : e));
+      }).catch(() => announce("Event saved locally but failed to sync. Please refresh."));
     }
     setShowForm(false);
     setEditId(null);
