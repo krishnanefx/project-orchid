@@ -36,7 +36,8 @@ export function ForumsView() {
     if (!selectedBoardId && localForums.length > 0) {
       setSelectedBoardId(openBoards[0]?.id ?? localForums[0]?.id ?? "");
     }
-  }, [localForums.length]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localForums.length, selectedBoardId]);
 
   async function publishThread() {
     const title = draftTitle.trim();

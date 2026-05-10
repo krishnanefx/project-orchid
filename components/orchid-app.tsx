@@ -1,11 +1,12 @@
 "use client";
 
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useState } from "react";
 import { AppProvider, useApp } from "@/lib/app-context";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/topbar";
 import { Footer } from "@/components/ui/primitives";
+import { acceptConsentAction } from "@/lib/actions";
 import type { ForumBoard, OrchidEvent, Profile, ReimbursementClaim, Resource, Society } from "@/lib/types";
 
 const DashboardView = lazy(() => import("@/components/views/dashboard-view").then((m) => ({ default: m.DashboardView })));
@@ -35,12 +36,60 @@ const ROLE_LABELS: Record<string, string> = {
   sponsor: "Sponsor",
 };
 
+function ConsentBanner() {
+  const { currentUser, setCurrentUser, announce } = useApp();
+  const [dismissed, setDismissed] = useState(false);
+
+  if (dismissed || !currentUser.id || currentUser.consentStatus === "accepted") return null;
+
+  async function handleAccept() {
+    setDismissed(true);
+    setCurrentUser({ ...currentUser, consentStatus: "accepted" });
+    announce("Terms accepted. Welcome to Project Orchid!");
+    try {
+      await acceptConsentAction(currentUser.id);
+    } catch {
+      // accepted locally even if sync fails
+    }
+  }
+
+  return (
+    <div role="dialog" aria-label="Terms and consent" style={{
+      display: "flex",
+      alignItems: "center",
+      gap: 14,
+      padding: "12px 20px",
+      background: "oklch(0.96 0.03 295)",
+      borderBottom: "1.5px solid oklch(0.88 0.06 295)",
+      fontSize: 13,
+      flexWrap: "wrap",
+    }}>
+      <p style={{ flex: 1, margin: 0, color: "var(--on-surface)", minWidth: 200 }}>
+        <strong>Welcome to Project Orchid.</strong> By continuing you agree to UKSSC&apos;s{" "}
+        <a href="#terms" style={{ color: "var(--primary)", fontWeight: 600 }}>Terms of Service</a>{" "}
+        and{" "}
+        <a href="#privacy" style={{ color: "var(--primary)", fontWeight: 600 }}>Privacy Policy</a>.
+        Your data is used only to operate the platform.
+      </p>
+      <button
+        type="button"
+        className="stitch-primary"
+        onClick={handleAccept}
+        style={{ fontSize: 13, padding: "8px 20px", flexShrink: 0 }}
+      >
+        Accept &amp; Continue
+      </button>
+    </div>
+  );
+}
+
 function AppShell() {
   const { view, toast, viewAs, setViewAs } = useApp();
   return (
     <div className="stitch-app">
       <Sidebar />
       <div className="stitch-body">
+        <ConsentBanner />
         {viewAs && (
           <div role="status" style={{
             display: "flex",

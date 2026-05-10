@@ -27,12 +27,15 @@ export default async function DashboardPage() {
 
   const profile = user ? await getProfile(user.id) : null;
 
+  const privilegedRoles = ["super_admin", "ukssc_staff", "finance_reviewer"];
+  const isPrivileged = profile?.role && privilegedRoles.includes(profile.role);
+
   const [societies, events, forums, resources, claims, rsvpIds] = await Promise.all([
     getSocieties(),
     getEvents(),
     getForumBoards(),
     getResources(),
-    getClaims(profile?.societyId),
+    getClaims(isPrivileged ? undefined : profile?.societyId),
     user ? getUserRsvpIds(user.id) : Promise.resolve([]),
   ]);
 
