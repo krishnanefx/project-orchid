@@ -19,7 +19,7 @@ function EventTypePill({ type }: { type: string }) {
 }
 
 export function DashboardView() {
-  const { rsvpdEventIds, setRsvpdEventIds, setLocalEvents, threads, announce, currentUser, localEvents, localSocieties, localForums, viewSociety } = useApp();
+  const { rsvpdEventIds, setRsvpdEventIds, setLocalEvents, threads, announce, setView, currentUser, localEvents, localSocieties, localForums, viewSociety } = useApp();
   const firstName = currentUser.name.split(" ")[0];
 
   const now = new Date().toISOString();
@@ -51,6 +51,38 @@ export function DashboardView() {
         action="New Post"
         onAction={() => announce("Open the Forums tab to publish a new verified community post.")}
       />
+      {/* Onboarding nudge for new users */}
+      {!currentUser.societyId && localSocieties.length > 0 && (
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+          padding: "14px 20px",
+          borderRadius: 12,
+          background: "var(--primary-soft)",
+          marginBottom: 20,
+          flexWrap: "wrap",
+        }}>
+          <UsersThree size={22} style={{ color: "var(--primary)", flexShrink: 0 }} weight="fill" />
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <p style={{ fontSize: 14, fontWeight: 700, color: "var(--on-surface)", margin: "0 0 2px" }}>
+              Find your society
+            </p>
+            <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
+              Join your university's Singaporean society to unlock reimbursements, events and the members board.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="stitch-primary"
+            onClick={() => setView("societies")}
+            style={{ flexShrink: 0 }}
+          >
+            Browse Societies
+          </button>
+        </div>
+      )}
+
       <section className="bento-grid">
 
         {/* Featured Event */}

@@ -2,6 +2,7 @@
 
 import { ArrowLeft, CheckCircle, Globe, InstagramLogo, MapPin, UsersThree } from "@phosphor-icons/react";
 import { useApp } from "@/lib/app-context";
+import { joinSocietyAction } from "@/lib/actions";
 import { universities } from "@/lib/data";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -11,7 +12,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export function SocietyDetail() {
-  const { currentSocietyId, setView, joinedSociety, setJoinedSociety, announce, localSocieties, localEvents } = useApp();
+  const { currentSocietyId, setView, joinedSociety, setJoinedSociety, announce, localSocieties, localEvents, currentUser, setCurrentUser } = useApp();
   const society = localSocieties.find((s) => s.id === currentSocietyId);
   const university = universities.find((u) => u.id === (society?.universitySlug || society?.universityId));
   const societyEvents = localEvents.filter((e) => e.societyIds.includes(currentSocietyId ?? ""));
@@ -27,15 +28,24 @@ export function SocietyDetail() {
     );
   }
 
-  const isJoined = joinedSociety === society.name;
+  const s = society;
+  const isJoined = joinedSociety === s.name;
 
-  const societyName = society.name;
   function handleJoin() {
     if (isJoined) return;
-    setJoinedSociety(societyName);
-    announce(`Joined ${societyName}.`);
+    setJoinedSociety(s.name);
+    setCurrentUser({ ...currentUser, societyId: s.id });
+    announce(`Joined ${s.name}.`);
+    if (currentUser.id) {
+      joinSocietyAction(s.id, currentUser.id).catch(() =>
+        announce("Joined locally but failed to sync — please refresh.")
+      );
+    }
   }
 
+  function safeHref(link: string) {
+    return link.startsWith("http") ? link : `https://${link}`;
+  }
   const instagramLink = society.links.find((l) => l.includes("instagram"));
   const otherLinks = society.links.filter((l) => !l.includes("instagram"));
 
@@ -119,27 +129,23 @@ export function SocietyDetail() {
             Committee
           </h3>
           <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 10 }}>
-            {society.committee.map((member) => (
-              <li key={member} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: "50%",
-                    background: "var(--primary-soft)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: "var(--primary)"
-                  }}
-                >
-                  {member.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-                </div>
-                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--on-surface)" }}>{member}</span>
-              </li>
-            ))}
+            {society.committee.map((entry) => {
+              const parts = entry.split("|");
+              const name = parts[0].trim();
+              const role = parts[1]?.trim();
+              const initials = name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+              return (
+                <li key={entry} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--primary-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "var(--primary)", flexShrink: 0 }}>
+                    {initials}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--on-surface)" }}>{name}</div>
+                    {role && <div style={{ fontSize: 11, color: "var(--muted)" }}>{role}</div>}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </div>
 
@@ -151,25 +157,25 @@ export function SocietyDetail() {
           <div style={{ display: "grid", gap: 10 }}>
             {instagramLink && (
               <a
-                href={`https://${instagramLink}`}
+                href={safeHref(instagramLink)}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--primary)", fontWeight: 600, textDecoration: "none" }}
               >
                 <InstagramLogo size={16} />
-                {instagramLink.replace("instagram.com/", "@")}
+                {instagramLink.replace(/https?:\/\/(www\.)?instagram\.com\//, "@").replace("instagram.com/", "@")}
               </a>
             )}
             {otherLinks.map((link) => (
               <a
                 key={link}
-                href={`https://${link}`}
+                href={safeHref(link)}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--primary)", fontWeight: 600, textDecoration: "none" }}
               >
                 <Globe size={16} />
-                {link}
+                {link.replace(/^https?:\/\//, "")}
               </a>
             ))}
             {society.links.length === 0 && (
