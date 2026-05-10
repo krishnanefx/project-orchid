@@ -79,13 +79,19 @@ export function Sidebar() {
       </nav>
 
       <div style={{ marginTop: "auto", paddingTop: 16, borderTop: "1px solid rgba(208,194,213,0.3)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 4px" }}>
+        <button
+          type="button"
+          onClick={() => setView("settings")}
+          style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 4px", width: "100%", background: "none", border: "none", cursor: "pointer", borderRadius: 8, textAlign: "left" }}
+          aria-label="Open profile settings"
+        >
           <div
             style={{
               width: 32,
               height: 32,
               borderRadius: "50%",
               background: "var(--primary-soft)",
+              border: "1.5px solid var(--primary)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -99,17 +105,17 @@ export function Sidebar() {
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: "var(--on-surface)", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {currentUser.name || "Unknown user"}
+              {currentUser.email ? currentUser.name : "Set up profile"}
             </div>
             <div style={{ fontSize: 10, fontWeight: 600, color: "var(--muted)", letterSpacing: "0.02em" }}>
-              {ROLE_LABELS[currentUser.role] ?? currentUser.role}
+              {currentUser.email ? (ROLE_LABELS[currentUser.role] ?? currentUser.role) : "Click to get started"}
             </div>
           </div>
-        </div>
+        </button>
       </div>
 
       <div className="stitch-sidebar-bottom">
-        {can("submit_claims") && (
+        {can("submit_claims") && currentUser.societyId && (
           <button className="stitch-primary full" onClick={() => setView("claims")} type="button">Submit Reimbursement</button>
         )}
         <button className="stitch-nav-item" type="button" onClick={() => setView("settings")}><GearSix size={17} /> Settings</button>
