@@ -83,8 +83,9 @@ export function SocietyAdmin() {
 
   const society = localSocieties.find((s) => s.id === currentUser.societyId);
   const university = universities.find((u) => u.id === society?.universityId);
+  const isPrivileged = currentUser.role === "super_admin" || currentUser.role === "ukssc_staff";
   const isCommittee = society
-    ? society.committee.some(
+    ? isPrivileged || society.committee.some(
         (entry) => entry.split("|")[0].trim().toLowerCase() === currentUser.name.toLowerCase()
       )
     : false;
