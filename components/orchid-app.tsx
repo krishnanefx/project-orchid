@@ -11,6 +11,7 @@ const DashboardView = lazy(() => import("@/components/views/dashboard-view").the
 const SocietyDirectory = lazy(() => import("@/components/views/society-directory").then((m) => ({ default: m.SocietyDirectory })));
 const SocietyDetail = lazy(() => import("@/components/views/society-detail").then((m) => ({ default: m.SocietyDetail })));
 const SocietyAdmin = lazy(() => import("@/components/views/society-admin").then((m) => ({ default: m.SocietyAdmin })));
+const AccessControl = lazy(() => import("@/components/views/access-control").then((m) => ({ default: m.AccessControl })));
 const EventsHub = lazy(() => import("@/components/views/events-hub").then((m) => ({ default: m.EventsHub })));
 const ForumsView = lazy(() => import("@/components/views/forums-view").then((m) => ({ default: m.ForumsView })));
 const ResourcesView = lazy(() => import("@/components/views/resources-view").then((m) => ({ default: m.ResourcesView })));
@@ -35,6 +36,7 @@ function AppShell() {
             {view === "societies" && <SocietyDirectory />}
             {view === "society-detail" && <SocietyDetail />}
             {view === "society-admin" && <SocietyAdmin />}
+            {view === "access-control" && <AccessControl />}
             {view === "events" && <EventsHub />}
             {view === "forums" && <ForumsView />}
             {view === "resources" && <ResourcesView />}

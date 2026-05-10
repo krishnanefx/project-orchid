@@ -1,10 +1,13 @@
 "use client";
 
+import { ShieldCheck } from "@phosphor-icons/react";
+import { useApp } from "@/lib/app-context";
 import { societies } from "@/lib/data";
 import { downloadCsv } from "@/lib/utils";
 import { Metric, PageHeader, TimelineItem } from "@/components/ui/primitives";
 
 export function AdminView() {
+  const { setView } = useApp();
   const totalMembers = societies.reduce((sum, s) => sum + s.members, 0);
 
   function exportAdminReport() {
@@ -38,6 +41,25 @@ export function AdminView() {
           <TimelineItem tone="muted" text="Finance marked one reimbursement paid" time="Today" />
         </article>
       </section>
+
+      {/* Access Control card */}
+      <div
+        className="stitch-card"
+        style={{ padding: "20px 24px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", marginTop: 4 }}
+        onClick={() => setView("access-control")}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setView("access-control"); }}
+      >
+        <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--primary-soft)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <ShieldCheck size={20} style={{ color: "var(--primary)" }} weight="fill" />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--on-surface)", marginBottom: 2 }}>Access Control</div>
+          <div style={{ fontSize: 13, color: "var(--muted)" }}>Configure which roles can see and do what across the platform</div>
+        </div>
+        <span style={{ fontSize: 18, color: "var(--muted)" }}>›</span>
+      </div>
     </main>
   );
 }

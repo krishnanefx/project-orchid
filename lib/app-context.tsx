@@ -3,8 +3,9 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { claims as seedClaims, profiles, societies as seedSocieties } from "@/lib/data";
 import type { ClaimStatus, Profile, ReimbursementClaim, Role, Society } from "@/lib/types";
+import { DEFAULT_PERMISSIONS, type FeatureKey, type PermissionsMatrix } from "@/lib/permissions";
 
-export type View = "dashboard" | "societies" | "society-detail" | "society-admin" | "events" | "forums" | "resources" | "admin" | "claims";
+export type View = "dashboard" | "societies" | "society-detail" | "society-admin" | "events" | "forums" | "resources" | "admin" | "claims" | "access-control";
 
 export const ADMIN_ROLES: Role[] = ["super_admin", "ukssc_staff"];
 
@@ -36,6 +37,9 @@ type AppState = {
   viewSociety: (id: string) => void;
   localSocieties: Society[];
   updateSociety: (id: string, patch: Partial<Society>) => void;
+  permissions: PermissionsMatrix;
+  setPermission: (role: Role, feature: FeatureKey, value: boolean) => void;
+  can: (feature: FeatureKey) => boolean;
 };
 
 const AppContext = createContext<AppState | null>(null);
@@ -48,6 +52,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [rsvp, setRsvp] = useState(false);
   const [joinedSociety, setJoinedSociety] = useState("UCL Singapore Society");
   const [localSocieties, setLocalSocieties] = useState<Society[]>(seedSocieties);
+  const [permissions, setPermissions] = useState<PermissionsMatrix>(DEFAULT_PERMISSIONS);
   const [claimStatuses, setClaimStatuses] = useState<Record<string, ClaimStatus>>({});
   const [localClaims, setLocalClaims] = useState<ReimbursementClaim[]>(seedClaims);
   const [threads, setThreads] = useState<ThreadItem[]>([
@@ -67,8 +72,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   function setCurrentUser(profile: Profile) {
     setCurrentUserState(profile);
-    // If switching to a non-admin account while on the admin view, go back to dashboard
-    if (view === "admin" && !ADMIN_ROLES.includes(profile.role)) {
+    const rolePerms = permissions[profile.role];
+    const VIEW_FEATURE_MAP: Partial<Record<View, FeatureKey>> = {
+      admin: "nav_admin",
+      "society-admin": "nav_society_admin",
+      forums: "nav_forums",
+      resources: "nav_resources",
+      events: "nav_events",
+      societies: "nav_societies"
+    };
+    const requiredFeature = VIEW_FEATURE_MAP[view];
+    if (requiredFeature && profile.role !== "super_admin" && !rolePerms?.[requiredFeature]) {
       setView("dashboard");
     }
     announce(`Switched to ${profile.name} (${profile.role.replace(/_/g, " ")})`);
@@ -83,8 +97,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLocalSocieties((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
   }
 
+  function setPermission(role: Role, feature: FeatureKey, value: boolean) {
+    setPermissions((prev) => ({
+      ...prev,
+      [role]: { ...(prev[role] ?? {}), [feature]: value }
+    }));
+  }
+
+  function can(feature: FeatureKey): boolean {
+    const role = currentUser.role;
+    if (role === "super_admin") return true;
+    return permissions[role]?.[feature] ?? false;
+  }
+
   return (
-    <AppContext.Provider value={{ view, setView, toast, announce, rsvp, setRsvp, joinedSociety, setJoinedSociety, claimStatuses, setClaimStatuses, localClaims, setLocalClaims, threads, setThreads, currentUser, setCurrentUser, currentSocietyId, viewSociety, localSocieties, updateSociety }}>
+    <AppContext.Provider value={{ view, setView, toast, announce, rsvp, setRsvp, joinedSociety, setJoinedSociety, claimStatuses, setClaimStatuses, localClaims, setLocalClaims, threads, setThreads, currentUser, setCurrentUser, currentSocietyId, viewSociety, localSocieties, updateSociety, permissions, setPermission, can }}>
       {children}
     </AppContext.Provider>
   );
