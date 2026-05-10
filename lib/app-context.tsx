@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { claims as seedClaims, profiles } from "@/lib/data";
 import type { ClaimStatus, Profile, ReimbursementClaim, Role } from "@/lib/types";
 
-export type View = "dashboard" | "societies" | "events" | "forums" | "resources" | "admin" | "claims";
+export type View = "dashboard" | "societies" | "society-detail" | "events" | "forums" | "resources" | "admin" | "claims";
 
 export const ADMIN_ROLES: Role[] = ["super_admin", "ukssc_staff"];
 
@@ -32,12 +32,15 @@ type AppState = {
   setThreads: (threads: ThreadItem[]) => void;
   currentUser: Profile;
   setCurrentUser: (profile: Profile) => void;
+  currentSocietyId: string | null;
+  viewSociety: (id: string) => void;
 };
 
 const AppContext = createContext<AppState | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [view, setView] = useState<View>("dashboard");
+  const [currentSocietyId, setCurrentSocietyId] = useState<string | null>(null);
   const [currentUser, setCurrentUserState] = useState<Profile>(profiles[0]);
   const [toast, setToast] = useState(`University email verified: ${profiles[0].email} maps to UCL Singapore Society.`);
   const [rsvp, setRsvp] = useState(false);
@@ -68,8 +71,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     announce(`Switched to ${profile.name} (${profile.role.replace(/_/g, " ")})`);
   }
 
+  function viewSociety(id: string) {
+    setCurrentSocietyId(id);
+    setView("society-detail");
+  }
+
   return (
-    <AppContext.Provider value={{ view, setView, toast, announce, rsvp, setRsvp, joinedSociety, setJoinedSociety, claimStatuses, setClaimStatuses, localClaims, setLocalClaims, threads, setThreads, currentUser, setCurrentUser }}>
+    <AppContext.Provider value={{ view, setView, toast, announce, rsvp, setRsvp, joinedSociety, setJoinedSociety, claimStatuses, setClaimStatuses, localClaims, setLocalClaims, threads, setThreads, currentUser, setCurrentUser, currentSocietyId, viewSociety }}>
       {children}
     </AppContext.Provider>
   );
