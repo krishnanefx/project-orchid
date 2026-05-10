@@ -1,26 +1,21 @@
 "use client";
 
-import { CalendarBlank, List, MapPin } from "@phosphor-icons/react";
-import Image from "next/image";
+import { CalendarBlank, List, MapPin, UsersThree } from "@phosphor-icons/react";
 import { useState } from "react";
 import { useApp } from "@/lib/app-context";
-import { imageUrls, PageHeader } from "@/components/ui/primitives";
+import { PageHeader } from "@/components/ui/primitives";
 import type { OrchidEvent } from "@/lib/types";
-
-function formatDate(startsAt: string) {
-  const d = new Date(startsAt);
-  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
-}
-
-function formatTime(startsAt: string) {
-  const d = new Date(startsAt);
-  return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
-}
 
 const TYPE_LABELS: Record<string, string> = {
   ukssc: "UKSSC",
   society: "Society",
   cross_society: "Cross-Society",
+};
+
+const TYPE_COLORS: Record<string, { bg: string; color: string }> = {
+  ukssc: { bg: "var(--primary-soft)", color: "var(--primary)" },
+  society: { bg: "var(--secondary-container)", color: "var(--on-secondary-container)" },
+  cross_society: { bg: "#fff3cd", color: "#856404" },
 };
 
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
@@ -29,32 +24,59 @@ const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   closed: { bg: "var(--surface-container)", color: "var(--muted)" },
 };
 
-function EventListItem({ event, onRsvp, rsvpd }: { event: OrchidEvent; onRsvp: () => void; rsvpd: boolean }) {
+function formatDate(startsAt: string) {
+  return new Date(startsAt).toLocaleDateString("en-GB", {
+    weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC",
+  });
+}
+
+function formatTime(startsAt: string) {
+  return new Date(startsAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+}
+
+function EventRow({ event, onRsvp, rsvpd }: { event: OrchidEvent; onRsvp: () => void; rsvpd: boolean }) {
+  const typeStyle = TYPE_COLORS[event.type] ?? TYPE_COLORS.ukssc;
   const statusStyle = STATUS_COLORS[event.status] ?? STATUS_COLORS.closed;
+  const spotsLeft = event.capacity - event.rsvps;
+
   return (
-    <div className="stitch-card" style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, marginBottom: 10 }}>
-      <div style={{ textAlign: "center", minWidth: 44, flexShrink: 0 }}>
-        <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "var(--primary)", letterSpacing: "0.04em" }}>
+    <div className="stitch-card" style={{ padding: "18px 22px", display: "flex", alignItems: "center", gap: 18, marginBottom: 10 }}>
+      {/* Date column */}
+      <div style={{ textAlign: "center", minWidth: 48, flexShrink: 0 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "var(--primary)", letterSpacing: "0.05em" }}>
           {new Date(event.startsAt).toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" })}
         </div>
-        <div style={{ fontSize: 22, fontWeight: 800, color: "var(--on-surface)", lineHeight: 1.1 }}>
+        <div style={{ fontSize: 26, fontWeight: 800, color: "var(--on-surface)", lineHeight: 1.1 }}>
           {new Date(event.startsAt).toLocaleDateString("en-GB", { day: "numeric", timeZone: "UTC" })}
         </div>
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)", marginBottom: 2 }}>{event.title}</div>
-        <div style={{ fontSize: 12, color: "var(--muted)", display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <span><MapPin size={12} style={{ display: "inline", verticalAlign: "middle" }} /> {event.location}</span>
-          <span><CalendarBlank size={12} style={{ display: "inline", verticalAlign: "middle" }} /> {formatTime(event.startsAt)}</span>
-          <span>{event.rsvps}/{event.capacity} RSVPs</span>
+        <div style={{ fontSize: 10, color: "var(--muted)" }}>
+          {formatTime(event.startsAt)}
         </div>
       </div>
-      <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "3px 10px", borderRadius: 999, background: statusStyle.bg, color: statusStyle.color, flexShrink: 0 }}>
-        {event.status}
-      </span>
-      <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 999, background: "var(--primary-soft)", color: "var(--primary)", fontWeight: 600, flexShrink: 0 }}>
-        {TYPE_LABELS[event.type] ?? event.type}
-      </span>
+
+      {/* Main info */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", gap: 6, marginBottom: 5, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "2px 8px", borderRadius: 999, background: typeStyle.bg, color: typeStyle.color }}>
+            {TYPE_LABELS[event.type] ?? event.type}
+          </span>
+          <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "2px 8px", borderRadius: 999, background: statusStyle.bg, color: statusStyle.color }}>
+            {event.status}
+          </span>
+        </div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--on-surface)", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {event.title}
+        </div>
+        <div style={{ display: "flex", gap: 14, fontSize: 12, color: "var(--muted)", flexWrap: "wrap" }}>
+          <span><MapPin size={12} style={{ display: "inline", verticalAlign: "middle" }} /> {event.location}</span>
+          <span><UsersThree size={12} style={{ display: "inline", verticalAlign: "middle" }} /> {event.rsvps}/{event.capacity} RSVPs</span>
+          {spotsLeft > 0 && spotsLeft <= 20 && (
+            <span style={{ color: "#856404", fontWeight: 600 }}>Only {spotsLeft} spots left</span>
+          )}
+        </div>
+      </div>
+
+      {/* Action */}
       {event.status !== "closed" && (
         <button
           type="button"
@@ -62,7 +84,7 @@ function EventListItem({ event, onRsvp, rsvpd }: { event: OrchidEvent; onRsvp: (
           style={{ flexShrink: 0 }}
           onClick={onRsvp}
         >
-          {rsvpd ? "RSVP'd" : "RSVP"}
+          {rsvpd ? "RSVP'd ✓" : "RSVP"}
         </button>
       )}
     </div>
@@ -81,102 +103,106 @@ export function EventsHub() {
     .filter((e) => e.startsAt <= now)
     .sort((a, b) => b.startsAt.localeCompare(a.startsAt));
 
-  const categories = ["All", "UKSSC", "Society", "Cross-Society"];
-  const typeKey: Record<string, string> = { "UKSSC": "ukssc", "Society": "society", "Cross-Society": "cross_society" };
+  const typeKey: Record<string, OrchidEvent["type"]> = {
+    "UKSSC": "ukssc",
+    "Society": "society",
+    "Cross-Society": "cross_society",
+  };
 
-  const filtered = filter === "All"
-    ? upcoming
-    : upcoming.filter((e) => e.type === typeKey[filter]);
+  const filtered = filter === "All" ? upcoming : upcoming.filter((e) => e.type === typeKey[filter]);
 
   const hero = upcoming[0] ?? null;
 
   return (
     <main className="stitch-main">
-      <PageHeader title="Events Hub" copy="Find and join events happening across the UKSSC network." />
+      <PageHeader
+        title="Events Hub"
+        copy="Find and join events happening across the UKSSC network."
+      />
 
+      {/* Hero card */}
       {hero ? (
-        <section className="event-hero-grid" style={{ marginBottom: 24 }}>
-          <div className="event-hero-image">
-            <Image src={imageUrls.summit} alt={hero.title} fill style={{ objectFit: "cover" }} />
-            <div>
-              <span className="pill green">Featured · {TYPE_LABELS[hero.type] ?? hero.type}</span>
-              <h2>{hero.title}</h2>
-              <p>{formatDate(hero.startsAt)} · {hero.location}</p>
+        <div className="stitch-card" style={{ padding: "28px 32px", marginBottom: 24, background: "var(--primary-soft)", display: "flex", gap: 24, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+              <span className="pill green" style={{ fontSize: 11 }}>Next Up</span>
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", padding: "3px 10px", borderRadius: 999, background: "rgba(157,78,221,0.12)", color: "var(--primary)" }}>
+                {TYPE_LABELS[hero.type] ?? hero.type}
+              </span>
+            </div>
+            <h2 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontWeight: 800, fontSize: 22, color: "var(--on-surface)", margin: "0 0 8px", lineHeight: 1.2 }}>
+              {hero.title}
+            </h2>
+            <div style={{ display: "flex", gap: 16, fontSize: 13, color: "var(--muted)", flexWrap: "wrap" }}>
+              <span><CalendarBlank size={14} style={{ display: "inline", verticalAlign: "middle" }} /> {formatDate(hero.startsAt)}</span>
+              <span><MapPin size={14} style={{ display: "inline", verticalAlign: "middle" }} /> {hero.location}</span>
+              <span><UsersThree size={14} style={{ display: "inline", verticalAlign: "middle" }} /> {hero.rsvps}/{hero.capacity} RSVPs</span>
             </div>
           </div>
-          <article className="stitch-card event-about">
-            <h3>About this event</h3>
-            <p style={{ fontSize: 14, color: "var(--muted)", lineHeight: 1.6 }}>
-              {hero.capacity} capacity · {hero.rsvps} RSVPs so far. Don't miss out — secure your spot now.
-            </p>
-            <div className="host-row">
-              <span>UK</span>
-              <div><b>Hosted by</b><p>UKSSC Network</p></div>
-            </div>
-            <button
-              className="stitch-primary full"
-              onClick={() => {
-                setRsvp(!rsvp);
-                announce(rsvp ? `RSVP cancelled for ${hero.title}.` : "RSVP confirmed. QR check-in enabled.");
-              }}
-              type="button"
-            >
-              {rsvp ? "RSVP confirmed" : "RSVP Now"}
-            </button>
-          </article>
-        </section>
+          <button
+            className={rsvp ? "stitch-secondary" : "stitch-primary"}
+            style={{ flexShrink: 0, padding: "12px 28px", fontSize: 15 }}
+            onClick={() => {
+              setRsvp(!rsvp);
+              announce(rsvp ? `RSVP cancelled for ${hero.title}.` : "RSVP confirmed. QR check-in will be available before the event.");
+            }}
+            type="button"
+          >
+            {rsvp ? "RSVP'd ✓" : "RSVP Now"}
+          </button>
+        </div>
       ) : (
-        <div className="stitch-card" style={{ padding: 32, textAlign: "center", marginBottom: 24 }}>
+        <div className="stitch-card" style={{ padding: 32, textAlign: "center", marginBottom: 24, background: "var(--surface-container, #faf7fb)" }}>
           <CalendarBlank size={36} style={{ color: "var(--muted)", marginBottom: 10 }} />
-          <p style={{ fontSize: 15, color: "var(--muted)", margin: 0 }}>No upcoming events yet. Check back soon or ask UKSSC staff to add events.</p>
+          <p style={{ fontSize: 15, color: "var(--muted)", margin: 0 }}>
+            No upcoming events yet. UKSSC staff can add events from Admin → Manage Data.
+          </p>
         </div>
       )}
 
+      {/* Filter bar */}
       <div className="category-row" style={{ marginBottom: 20 }}>
-        {categories.map((item) => (
-          <button
-            key={item}
-            className={filter === item ? "active" : ""}
-            onClick={() => setFilter(item)}
-            type="button"
-          >
+        {["All", "UKSSC", "Society", "Cross-Society"].map((item) => (
+          <button key={item} className={filter === item ? "active" : ""} onClick={() => setFilter(item)} type="button">
             {item}
           </button>
         ))}
       </div>
 
+      {/* Upcoming list */}
       <section>
         <div className="section-row" style={{ marginBottom: 12 }}>
           <h3>Upcoming Events</h3>
           <span><List size={18} /></span>
         </div>
         {filtered.length === 0 ? (
-          <p style={{ fontSize: 14, color: "var(--muted)" }}>
-            {filter === "All" ? "No upcoming events scheduled." : `No upcoming ${filter} events.`}
+          <p style={{ fontSize: 14, color: "var(--muted)", padding: "8px 0" }}>
+            {filter === "All" ? "No upcoming events." : `No upcoming ${filter} events.`}
           </p>
         ) : (
           filtered.map((event) => (
-            <EventListItem
+            <EventRow
               key={event.id}
               event={event}
-              rsvpd={rsvp && upcoming[0]?.id === event.id}
+              rsvpd={rsvp && hero?.id === event.id}
               onRsvp={() => announce(`RSVP toggled for ${event.title}.`)}
             />
           ))
         )}
       </section>
 
+      {/* Past events */}
       {past.length > 0 && (
         <section style={{ marginTop: 32 }}>
           <div className="section-row" style={{ marginBottom: 12 }}>
             <h3 style={{ color: "var(--muted)" }}>Past Events</h3>
           </div>
           {past.slice(0, 5).map((event) => (
-            <div key={event.id} className="stitch-card" style={{ padding: "14px 20px", display: "flex", gap: 14, alignItems: "center", marginBottom: 8, opacity: 0.7 }}>
-              <CalendarBlank size={16} style={{ color: "var(--muted)", flexShrink: 0 }} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)" }}>{event.title}</div>
-                <div style={{ fontSize: 12, color: "var(--muted)" }}>{formatDate(event.startsAt)} · {event.location} · {event.checkedIn} attended</div>
+            <div key={event.id} className="stitch-card" style={{ padding: "14px 20px", display: "flex", gap: 14, alignItems: "center", marginBottom: 8, opacity: 0.65 }}>
+              <CalendarBlank size={15} style={{ color: "var(--muted)", flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--on-surface)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{event.title}</div>
+                <div style={{ fontSize: 11, color: "var(--muted)" }}>{formatDate(event.startsAt)} · {event.location} · {event.checkedIn} attended</div>
               </div>
             </div>
           ))}
