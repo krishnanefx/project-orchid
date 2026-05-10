@@ -202,6 +202,47 @@ export function DashboardView() {
           )}
         </article>
 
+        {/* My RSVPs */}
+        {(() => {
+          const myRsvps = localEvents
+            .filter((e) => rsvpdEventIds.includes(e.id))
+            .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+          if (myRsvps.length === 0) return null;
+          return (
+            <article className="stitch-card bento-wide">
+              <h3>My RSVPs</h3>
+              {myRsvps.map((event) => (
+                <div key={event.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--outline-variant, rgba(208,194,213,0.25))" }}>
+                  <div style={{ textAlign: "center", minWidth: 36, flexShrink: 0 }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", color: "var(--primary)" }}>
+                      {new Date(event.startsAt).toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" })}
+                    </div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: "var(--on-surface)", lineHeight: 1 }}>
+                      {new Date(event.startsAt).toLocaleDateString("en-GB", { day: "numeric", timeZone: "UTC" })}
+                    </div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--on-surface)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{event.title}</div>
+                    <div style={{ fontSize: 11, color: "var(--muted)" }}>{event.location}</div>
+                  </div>
+                  <button
+                    type="button"
+                    className="stitch-secondary"
+                    style={{ fontSize: 11, padding: "4px 10px", flexShrink: 0 }}
+                    onClick={() => {
+                      setRsvpdEventIds(rsvpdEventIds.filter((id) => id !== event.id));
+                      setLocalEvents(localEvents.map((e) => e.id === event.id ? { ...e, rsvps: Math.max(0, e.rsvps - 1) } : e));
+                      announce(`RSVP cancelled for ${event.title}.`);
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ))}
+            </article>
+          );
+        })()}
+
         {/* Upcoming list */}
         {nextEvents.length > 0 && (
           <article className="stitch-card bento-wide">
