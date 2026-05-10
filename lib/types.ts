@@ -24,10 +24,82 @@ export type Society = {
   universityId: string;
   logo: string;
   description: string;
+  bio?: string;
   committee: string[];
   links: string[];
   members: number;
   status: "active" | "onboarding" | "needs_review";
+  foundedYear?: number;
+  tags?: string[];
+  bannerColor?: string;
+  logoUrl?: string;
+  bannerUrl?: string;
+  galleryUrls?: string[];
+};
+
+export type SocietyDraft = Omit<Society, "id" | "members" | "status">;
+
+export type EventDraft = {
+  title: string;
+  type: EventType;
+  startsAt: string;
+  location: string;
+  capacity: number;
+};
+
+export type AdminQueueItem = {
+  id: string;
+  type: "claim" | "member" | "event" | "forum" | "content";
+  label: string;
+  meta: string;
+  status: string;
+  createdAt: string;
+};
+
+export type MemberAdminRow = {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  societyId?: string;
+  universityId?: string;
+  course?: string;
+  year?: string;
+  verified: boolean;
+  consentStatus: "accepted" | "pending";
+  joinedAt?: string;
+  notes?: string;
+};
+
+export type EventAdminRow = {
+  id: string;
+  title: string;
+  type: EventType;
+  startsAt: string;
+  location: string;
+  capacity: number;
+  rsvps: number;
+  checkedIn: number;
+  status: "open" | "waitlist" | "closed";
+  societyIds: string[];
+};
+
+export type ReportCard = {
+  id: string;
+  title: string;
+  description: string;
+  metric: string | number;
+  delta?: string;
+  category: "membership" | "events" | "forums" | "claims" | "societies";
+};
+
+export type GovernanceRequest = {
+  id: string;
+  type: "deletion" | "consent_update" | "data_export" | "audit_log";
+  requestedBy: string;
+  requestedAt: string;
+  status: "pending" | "processing" | "completed" | "rejected";
+  notes?: string;
 };
 
 export type Profile = {

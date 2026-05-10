@@ -20,10 +20,14 @@ export const societies: Society[] = [
     universityId: "ucl",
     logo: "UCL",
     description: "A London base for Singaporeans across socials, careers, welfare and Freshers support. One of the largest Singaporean societies in the UK.",
-    committee: ["Yew Chin Siang", "Arielle Tan", "Brandon Lim"],
+    bio: "Founded in 1999, UCLSS is one of the oldest and largest Singaporean societies in the UK. We run Freshers events, career panels, welfare check-ins, alumni mentorship, and the annual Singaporean Night. Our committee works closely with UKSSC to represent UCL members at a national level.",
+    committee: ["Yew Chin Siang", "Arielle Tan", "Brandon Lim", "Janelle Ho"],
     links: ["instagram.com/uclsingapore", "linktr.ee/uclsingapore"],
     members: 184,
-    status: "active"
+    status: "active",
+    foundedYear: 1999,
+    tags: ["Welfare", "Careers", "Culture", "Freshers"],
+    bannerColor: "#f3eeff"
   },
   {
     id: "imperial-singapore",
@@ -31,10 +35,14 @@ export const societies: Society[] = [
     universityId: "imperial",
     logo: "IC",
     description: "A community for Singaporeans in STEM, medicine, business and design across Imperial College London.",
+    bio: "Imperial College Singapore Society brings together Singaporeans across all faculties at Imperial. We run hackathons, lab visits, career nights, and wellness socials. Our members span Engineering, Medicine, Business and the Arts.",
     committee: ["Megan Koh", "Isaac Teo", "Daryl Ong"],
     links: ["instagram.com/imperialsingsoc"],
     members: 143,
-    status: "active"
+    status: "active",
+    foundedYear: 2003,
+    tags: ["STEM", "Careers", "Welfare"],
+    bannerColor: "#fff0f3"
   },
   {
     id: "lse-singapore",
@@ -42,10 +50,14 @@ export const societies: Society[] = [
     universityId: "lse",
     logo: "LSE",
     description: "Connecting Singaporeans at the London School of Economics through socials, career networking, and cultural events.",
+    bio: "LSE Singapore Society is the home of Singaporean students at one of the world's top social science institutions. We run policy debates, finance career panels, Deepavali and CNY socials, and regular welfare check-ins.",
     committee: ["Clara Goh", "Ryan Chua"],
     links: ["instagram.com/lsesingsoc"],
     members: 118,
-    status: "active"
+    status: "active",
+    foundedYear: 2001,
+    tags: ["Policy", "Finance", "Culture"],
+    bannerColor: "#fffbe6"
   },
   {
     id: "cambridge-cumsa",
@@ -53,10 +65,14 @@ export const societies: Society[] = [
     universityId: "cambridge",
     logo: "CAM",
     description: "CUMSA bridges Malaysian and Singaporean students at Cambridge through academic, cultural and social programmes.",
+    bio: "CUMSA has been Cambridge's home for Malaysian and Singaporean students since 1967. We organise the annual Malaysian-Singaporean Night (MSN), Freshers' week, welfare initiatives, and cultural exchanges with other Oxbridge and London societies.",
     committee: ["Albert Chieng", "Lim Zheng Wei"],
     links: ["instagram.com/cumsa_official"],
     members: 210,
-    status: "active"
+    status: "active",
+    foundedYear: 1967,
+    tags: ["Culture", "Academic", "Welfare", "Alumni"],
+    bannerColor: "#e8f5e9"
   },
   {
     id: "manc-singapore",
@@ -64,10 +80,14 @@ export const societies: Society[] = [
     universityId: "manchester",
     logo: "MAN",
     description: "Regional community for Singaporeans in Manchester, hosting food nights, welfare check-ins and cross-society collaborations.",
+    bio: "The Singapore Students' Society of Manchester serves Singaporeans across the University of Manchester and Manchester Metropolitan University. We run Hawker nights, supper clubs, welfare support, and collaborate with other Northern societies.",
     committee: ["Samantha Tan", "Ethan Quek"],
     links: ["instagram.com/mancsingsoc"],
     members: 96,
-    status: "active"
+    status: "active",
+    foundedYear: 2008,
+    tags: ["Food", "Welfare", "North England"],
+    bannerColor: "#e3f2fd"
   },
   {
     id: "edin-singapore",
@@ -75,10 +95,14 @@ export const societies: Society[] = [
     universityId: "edinburgh",
     logo: "ED",
     description: "Student support, cultural events and alumni links for Singaporeans in Edinburgh and across Scotland.",
+    bio: "EUSSS is the only Singaporean student society in Scotland, serving students across the University of Edinburgh, Heriot-Watt and Edinburgh Napier. We run Freshers mixers, National Day celebrations, and maintain an active alumni network.",
     committee: ["Ilhan Athar", "Tricia Low"],
     links: ["instagram.com/eusss_official"],
     members: 71,
-    status: "active"
+    status: "active",
+    foundedYear: 2011,
+    tags: ["Culture", "Alumni", "Scotland"],
+    bannerColor: "#fce4ec"
   }
 ];
 

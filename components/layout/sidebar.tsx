@@ -7,6 +7,7 @@ import {
   ChatCircleText,
   GearSix,
   House,
+  IdentificationCard,
   SignOut,
   UsersThree
 } from "@phosphor-icons/react";
@@ -19,6 +20,7 @@ const navItems: { id: View; label: string; icon: React.ComponentType<{ size?: nu
   { id: "events", label: "Events", icon: CalendarBlank },
   { id: "forums", label: "Forums", icon: ChatCircleText },
   { id: "resources", label: "Resources", icon: Article },
+  { id: "society-admin", label: "My Society", icon: IdentificationCard },
   { id: "admin", label: "Admin", icon: ChartLineUp }
 ];
 
@@ -36,9 +38,12 @@ export function Sidebar() {
   const { view, setView, currentUser, setCurrentUser } = useApp();
   const isAdmin = ADMIN_ROLES.includes(currentUser.role);
 
-  const visibleNavItems = navItems.filter(
-    (item) => item.id !== "admin" || isAdmin
-  );
+  const hasSociety = !!currentUser.societyId;
+  const visibleNavItems = navItems.filter((item) => {
+    if (item.id === "admin") return isAdmin;
+    if (item.id === "society-admin") return hasSociety;
+    return true;
+  });
 
   return (
     <aside className="stitch-sidebar">
