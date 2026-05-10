@@ -1,6 +1,6 @@
 "use client";
 
-import { Database, ShieldCheck } from "@phosphor-icons/react";
+import { Database, ShieldCheck, UsersThree } from "@phosphor-icons/react";
 import { useApp } from "@/lib/app-context";
 import { downloadCsv } from "@/lib/utils";
 import { Metric, PageHeader, TimelineItem } from "@/components/ui/primitives";
@@ -96,6 +96,24 @@ export function AdminView() {
           )}
         </article>
       </section>
+
+      {/* Members card */}
+      <button
+        type="button"
+        className="stitch-card"
+        style={{ padding: "20px 24px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", marginTop: 4, width: "100%", border: "none", textAlign: "left" }}
+        onClick={() => setView("admin-members")}
+        aria-label="Manage members — view profiles, update roles and verify accounts"
+      >
+        <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--primary-soft)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <UsersThree size={20} style={{ color: "var(--primary)" }} weight="fill" />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--on-surface)", marginBottom: 2 }}>Members</div>
+          <div style={{ fontSize: 13, color: "var(--muted)" }}>View all registered members, update roles and verify accounts</div>
+        </div>
+        <span style={{ fontSize: 18, color: "var(--muted)" }} aria-hidden="true">›</span>
+      </button>
 
       {/* Manage Data card */}
       <button

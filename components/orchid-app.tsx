@@ -19,6 +19,7 @@ const ResourcesView = lazy(() => import("@/components/views/resources-view").the
 const AdminView = lazy(() => import("@/components/views/admin-view").then((m) => ({ default: m.AdminView })));
 const ClaimsView = lazy(() => import("@/components/views/claims-view").then((m) => ({ default: m.ClaimsView })));
 const AdminDataView = lazy(() => import("@/components/views/admin-data").then((m) => ({ default: m.AdminDataView })));
+const AdminMembers = lazy(() => import("@/components/views/admin-members").then((m) => ({ default: m.AdminMembers })));
 const SettingsView = lazy(() => import("@/components/views/settings-view").then((m) => ({ default: m.SettingsView })));
 
 function ViewSkeleton() {
@@ -82,6 +83,7 @@ function AppShell() {
             {view === "admin" && <AdminView />}
             {view === "claims" && <ClaimsView />}
             {view === "admin-data" && <AdminDataView />}
+            {view === "admin-members" && <AdminMembers />}
             {view === "settings" && <SettingsView />}
           </Suspense>
         </ErrorBoundary>
