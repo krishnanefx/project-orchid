@@ -2,15 +2,24 @@
 
 import { CheckCircle, Leaf, MapPin, UsersThree } from "@phosphor-icons/react";
 import { useApp } from "@/lib/app-context";
+import { joinSocietyAction } from "@/lib/actions";
 import { universities } from "@/lib/data";
 import { PageHeader } from "@/components/ui/primitives";
 
 export function SocietyDirectory() {
-  const { joinedSociety, setJoinedSociety, announce, viewSociety, localSocieties } = useApp();
+  const { joinedSociety, setJoinedSociety, announce, viewSociety, localSocieties, currentUser, setCurrentUser } = useApp();
 
   function joinSociety(name: string, id: string) {
+    // Optimistic
     setJoinedSociety(name);
+    setCurrentUser({ ...currentUser, societyId: id });
     announce(`Joined ${name}.`);
+    // Persist
+    if (currentUser.id) {
+      joinSocietyAction(id, currentUser.id).catch(() =>
+        announce("Joined locally but failed to sync — please refresh.")
+      );
+    }
   }
 
   return (

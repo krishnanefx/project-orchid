@@ -132,6 +132,17 @@ export type OrchidEvent = {
   status: "open" | "waitlist" | "closed";
 };
 
+export type ForumThread = {
+  id: string;
+  boardId: string;
+  title: string;
+  body: string;
+  authorId: string;
+  pinned: boolean;
+  locked: boolean;
+  createdAt: string;
+};
+
 export type ForumBoard = {
   id: string;
   name: string;
