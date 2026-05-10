@@ -52,6 +52,7 @@ type AppState = {
   currentSocietyId: string | null;
   viewSociety: (id: string) => void;
   localSocieties: Society[];
+  setLocalSocieties: (value: Society[]) => void;
   updateSociety: (id: string, patch: Partial<Society>) => void;
   permissions: PermissionsMatrix;
   setPermission: (role: Role, feature: FeatureKey, value: boolean) => void;
@@ -154,7 +155,7 @@ export function AppProvider({
   }
 
   return (
-    <AppContext.Provider value={{ view, setView, toast, announce, rsvp, setRsvp, joinedSociety, setJoinedSociety, claimStatuses, setClaimStatuses, localClaims, setLocalClaims, localEvents, setLocalEvents, localForums, setLocalForums, localResources, setLocalResources, threads, setThreads, currentUser, setCurrentUser, currentSocietyId, viewSociety, localSocieties, updateSociety, permissions, setPermission, can }}>
+    <AppContext.Provider value={{ view, setView, toast, announce, rsvp, setRsvp, joinedSociety, setJoinedSociety, claimStatuses, setClaimStatuses, localClaims, setLocalClaims, localEvents, setLocalEvents, localForums, setLocalForums, localResources, setLocalResources, threads, setThreads, currentUser, setCurrentUser, currentSocietyId, viewSociety, localSocieties, setLocalSocieties, updateSociety, permissions, setPermission, can }}>
       {children}
     </AppContext.Provider>
   );
