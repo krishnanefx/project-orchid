@@ -92,7 +92,6 @@ export async function createSocietyAction(input: {
     .from("societies")
     .insert({
       name: input.name,
-      university_id: "00000000-0000-0000-0000-000000000000", // placeholder; link real UUID separately
       university_slug: input.universitySlug,
       description: input.description,
       logo: input.logo,
