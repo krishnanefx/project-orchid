@@ -7,7 +7,7 @@ import { navItems } from "@/components/layout/sidebar";
 import { universities } from "@/lib/data";
 
 export function TopBar() {
-  const { view, setView, currentUser, localSocieties, localEvents, localClaims, localForums, viewSociety } = useApp();
+  const { view, setView, currentUser, localSocieties, localEvents, localClaims, localForums, viewSociety, can } = useApp();
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
@@ -195,11 +195,19 @@ export function TopBar() {
         )}
       </div>
       <div className="mobile-tabs" aria-label="Mobile navigation">
-        {navItems.slice(0, 5).map((item) => (
-          <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => setView(item.id)} type="button">
-            {item.label}
-          </button>
-        ))}
+        {navItems
+          .filter((item) => {
+            if (item.id === "society-admin" && !currentUser.societyId) return false;
+            if (item.id === "claims") return can("submit_claims") || ["finance_reviewer", "ukssc_staff", "super_admin"].includes(currentUser.role);
+            if (item.id === "admin") return can("nav_admin");
+            return true;
+          })
+          .slice(0, 6)
+          .map((item) => (
+            <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => setView(item.id)} type="button">
+              {item.label}
+            </button>
+          ))}
       </div>
       <div className="top-actions">
         <div style={{ position: "relative" }}>
