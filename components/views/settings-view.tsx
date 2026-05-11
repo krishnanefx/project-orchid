@@ -1,6 +1,6 @@
 "use client";
 
-import { FloppyDisk, LockKey, Moon, Sun, User } from "@phosphor-icons/react";
+import { Bell, FloppyDisk, LockKey, Moon, Sun, User } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useApp } from "@/lib/app-context";
@@ -47,10 +47,26 @@ export function SettingsView() {
   const [pwStatus, setPwStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [pwError, setPwError] = useState("");
   const [theme, setTheme] = useState<Theme>("light");
+  const [notifs, setNotifs] = useState({
+    events: true,
+    rsvpReminders: true,
+    societyUpdates: true,
+    claimUpdates: true,
+  });
 
   useEffect(() => {
     setTheme(getStoredTheme());
+    const stored = localStorage.getItem("orchid-notifs");
+    if (stored) {
+      try { setNotifs(JSON.parse(stored)); } catch { /* ignore */ }
+    }
   }, []);
+
+  function toggleNotif(key: keyof typeof notifs) {
+    const next = { ...notifs, [key]: !notifs[key] };
+    setNotifs(next);
+    localStorage.setItem("orchid-notifs", JSON.stringify(next));
+  }
 
   function handleThemeToggle(next: Theme) {
     setTheme(next);
@@ -275,6 +291,66 @@ export function SettingsView() {
               <><FloppyDisk size={15} /> Save Profile</>
             )}
           </button>
+        </div>
+
+        {/* Notifications */}
+        <div className="stitch-card" style={{ padding: 24, marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <Bell size={16} style={{ color: "var(--primary)" }} weight="fill" />
+            <h3 style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--on-surface)", margin: 0 }}>
+              Notifications
+            </h3>
+          </div>
+          <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 16 }}>
+            Control which alerts you receive. Changes apply immediately.
+          </p>
+          <div style={{ display: "grid", gap: 0 }}>
+            {([
+              { key: "events" as const, label: "New Events", desc: "When UKSSC or your society publishes a new event" },
+              { key: "rsvpReminders" as const, label: "RSVP Reminders", desc: "Reminder 24 hours before events you've RSVP'd to" },
+              { key: "societyUpdates" as const, label: "Society Updates", desc: "New forum posts in your society's boards" },
+              { key: "claimUpdates" as const, label: "Claim Status", desc: "When your reimbursement claims are reviewed or paid" },
+            ]).map(({ key, label, desc }, i, arr) => (
+              <div
+                key={key}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 16,
+                  padding: "14px 0",
+                  borderBottom: i < arr.length - 1 ? "1px solid var(--outline-variant, rgba(208,194,213,0.3))" : "none",
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)", marginBottom: 2 }}>{label}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)" }}>{desc}</div>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={notifs[key]}
+                  onClick={() => toggleNotif(key)}
+                  style={{
+                    width: 44, height: 24, borderRadius: 999, border: "none",
+                    padding: 3, flexShrink: 0,
+                    background: notifs[key] ? "var(--primary)" : "var(--outline, #d0c2d5)",
+                    cursor: "pointer",
+                    display: "flex", alignItems: "center",
+                    transition: "background 180ms ease",
+                  }}
+                >
+                  <span style={{
+                    width: 18, height: 18, borderRadius: "50%", background: "#fff",
+                    transform: notifs[key] ? "translateX(20px)" : "translateX(0)",
+                    transition: "transform 180ms ease",
+                    display: "block",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.18)",
+                  }} />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Appearance */}
