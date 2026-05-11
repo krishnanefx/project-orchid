@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarBlank, CaretDown, CaretUp, List, MapPin, UsersThree } from "@phosphor-icons/react";
+import { CalendarBlank, CaretDown, CaretUp, List, MapPin, UsersThree, Warning } from "@phosphor-icons/react";
 import { useState } from "react";
 import { useApp } from "@/lib/app-context";
 import { rsvpEventAction } from "@/lib/actions";
@@ -122,17 +122,26 @@ export function EventsHub() {
 
   function toggleRsvp(event: OrchidEvent) {
     const alreadyRsvpd = rsvpdEventIds.includes(event.id);
-    // Optimistic update
+    if (!alreadyRsvpd && event.status === "closed") {
+      announce("This event is no longer accepting RSVPs.");
+      return;
+    }
+    const nextRsvps = Math.max(0, event.rsvps + (alreadyRsvpd ? -1 : 1));
+    const nextStatus = !alreadyRsvpd && nextRsvps >= event.capacity ? "waitlist" : event.status === "waitlist" && nextRsvps < event.capacity ? "open" : event.status;
+
     const nextIds = alreadyRsvpd
       ? rsvpdEventIds.filter((id) => id !== event.id)
       : [...rsvpdEventIds, event.id];
     setRsvpdEventIds(nextIds);
-    // Update local event RSVP count
     setLocalEvents(allEvents.map((e) =>
-      e.id === event.id ? { ...e, rsvps: Math.max(0, e.rsvps + (alreadyRsvpd ? -1 : 1)) } : e
+      e.id === event.id ? { ...e, rsvps: nextRsvps, status: nextStatus } : e
     ));
-    announce(alreadyRsvpd ? `RSVP cancelled for ${event.title}.` : "RSVP confirmed. QR check-in will be available before the event.");
-    // Persist to DB
+    const msg = alreadyRsvpd
+      ? `RSVP cancelled for ${event.title}.`
+      : nextStatus === "waitlist"
+        ? `Added to waitlist for ${event.title} — event is now at capacity.`
+        : "RSVP confirmed. QR check-in will be available before the event.";
+    announce(msg);
     if (currentUser.id) {
       rsvpEventAction(event.id, currentUser.id).catch(() =>
         announce("RSVP saved locally but failed to sync.")

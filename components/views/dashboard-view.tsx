@@ -115,9 +115,11 @@ export function DashboardView() {
                   className={rsvpdEventIds.includes(featuredEvent.id) ? "stitch-secondary" : "stitch-primary"}
                   onClick={() => {
                     const alreadyRsvpd = rsvpdEventIds.includes(featuredEvent.id);
+                    const nextRsvps = Math.max(0, featuredEvent.rsvps + (alreadyRsvpd ? -1 : 1));
+                    const nextStatus = !alreadyRsvpd && nextRsvps >= featuredEvent.capacity ? "waitlist" as const : featuredEvent.status;
                     setRsvpdEventIds(alreadyRsvpd ? rsvpdEventIds.filter((id) => id !== featuredEvent.id) : [...rsvpdEventIds, featuredEvent.id]);
-                    setLocalEvents(localEvents.map((e) => e.id === featuredEvent.id ? { ...e, rsvps: Math.max(0, e.rsvps + (alreadyRsvpd ? -1 : 1)) } : e));
-                    announce(alreadyRsvpd ? `RSVP cancelled for ${featuredEvent.title}.` : "RSVP confirmed. Your QR check-in will appear before the event.");
+                    setLocalEvents(localEvents.map((e) => e.id === featuredEvent.id ? { ...e, rsvps: nextRsvps, status: nextStatus } : e));
+                    announce(alreadyRsvpd ? `RSVP cancelled for ${featuredEvent.title}.` : nextStatus === "waitlist" ? `Added to waitlist — event is now full.` : "RSVP confirmed. Your QR check-in will appear before the event.");
                   }}
                   type="button"
                 >

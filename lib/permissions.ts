@@ -73,7 +73,7 @@ export const DEFAULT_PERMISSIONS: PermissionsMatrix = {
     nav_society_admin: false,
     nav_admin: false,
     submit_claims: false,
-    rsvp_events: false,
+    rsvp_events: true,
     join_society: false,
     edit_society_profile: false,
     view_member_details: false
