@@ -1,7 +1,7 @@
 "use client";
 
 import { DownloadSimple, FileArrowUp } from "@phosphor-icons/react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { z } from "zod";
 import { useApp } from "@/lib/app-context";
 import { submitClaimAction, updateClaimStatusAction } from "@/lib/actions";
@@ -26,12 +26,13 @@ const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
 };
 
 export function ClaimsView() {
-  const { localClaims, setLocalClaims, claimStatuses, setClaimStatuses, announce, currentUser } = useApp();
+  const { localClaims, setLocalClaims, claimStatuses, setClaimStatuses, announce, currentUser, can } = useApp();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
   const [purpose, setPurpose] = useState("");
   const [amount, setAmount] = useState("");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [formErrors, setFormErrors] = useState<{ purpose?: string; amount?: string }>({});
+  const purposeRef = useRef<HTMLInputElement>(null);
 
   function submitClaim() {
     const result = claimSchema.safeParse({ purpose, amount });
@@ -104,7 +105,12 @@ export function ClaimsView() {
 
   return (
     <main className="stitch-main">
-      <PageHeader title="Reimbursements Portal" copy="Submit receipts, route claims to UKSSC finance and track paid status." action="New Claim" />
+      <PageHeader
+        title="Reimbursements Portal"
+        copy="Submit receipts, route claims to UKSSC finance and track paid status."
+        action={can("submit_claims") ? "New Claim" : undefined}
+        onAction={() => { purposeRef.current?.focus(); purposeRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }}
+      />
 
       {/* Status filter tabs */}
       <div className="category-row" style={{ marginBottom: 16 }}>
@@ -195,7 +201,7 @@ export function ClaimsView() {
           <form className="stitch-form">
             <label>
               Purpose
-              <input value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="Event supplies" aria-describedby={formErrors.purpose ? "err-purpose" : undefined} />
+              <input ref={purposeRef} value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="Event supplies" aria-describedby={formErrors.purpose ? "err-purpose" : undefined} />
               {formErrors.purpose ? <span id="err-purpose" className="field-error">{formErrors.purpose}</span> : null}
             </label>
             <label>
