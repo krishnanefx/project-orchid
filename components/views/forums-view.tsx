@@ -1,11 +1,25 @@
 "use client";
 
-import { CaretDown, CaretUp } from "@phosphor-icons/react";
+import { CaretDown, CaretUp, PushPin } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { useApp } from "@/lib/app-context";
 import { createForumThreadAction, getForumThreadsAction } from "@/lib/actions";
 import { PageHeader, Thread } from "@/components/ui/primitives";
 import type { ForumThread } from "@/lib/types";
+
+function PinnedBanner({ message }: { message: string }) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "flex-start", gap: 10,
+      padding: "12px 16px", borderRadius: 10, marginBottom: 12,
+      background: "var(--primary-soft)",
+      border: "1px solid oklch(from var(--primary) l c h / 0.25)",
+    }}>
+      <PushPin size={15} weight="fill" style={{ color: "var(--primary)", flexShrink: 0, marginTop: 1 }} />
+      <p style={{ fontSize: 13, color: "var(--on-surface)", margin: 0, lineHeight: 1.6 }}>{message}</p>
+    </div>
+  );
+}
 
 function ThreadRow({ thread, timeAgo }: { thread: ForumThread; timeAgo: (iso: string) => string }) {
   const [expanded, setExpanded] = useState(false);
@@ -28,8 +42,13 @@ function ThreadRow({ thread, timeAgo }: { thread: ForumThread; timeAgo: (iso: st
           <div style={{ fontSize: 11, fontWeight: 700, color: "var(--on-surface)", lineHeight: 1.2 }}>0</div>
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)", lineHeight: 1.3, marginBottom: 3 }}>
-            {thread.title}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)", lineHeight: 1.3 }}>
+              {thread.title}
+            </div>
+            {thread.pinned && (
+              <PushPin size={12} weight="fill" style={{ color: "var(--primary)", flexShrink: 0 }} />
+            )}
           </div>
           <div style={{ fontSize: 11, color: "var(--muted)" }}>
             {timeAgo(thread.createdAt)}
@@ -211,6 +230,7 @@ export function ForumsView() {
                 <h3>{selectedBoard.name}</h3>
                 <span>{threads.length} thread{threads.length !== 1 ? "s" : ""}</span>
               </div>
+              {selectedBoard.pinned && <PinnedBanner message={selectedBoard.pinned} />}
               {loadingThreads ? (
                 <p style={{ color: "var(--muted)", fontSize: 13, padding: "8px 0" }}>Loading…</p>
               ) : threads.length === 0 ? (
