@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarBlank, ChatCircleText, MapPin, Storefront, UsersThree } from "@phosphor-icons/react";
+import { CalendarBlank, ChatCircleText, CurrencyGbp, MapPin, Storefront, UsersThree } from "@phosphor-icons/react";
 import { useApp } from "@/lib/app-context";
 import { universities } from "@/lib/data";
 import { PageHeader, Thread } from "@/components/ui/primitives";
@@ -18,8 +18,16 @@ function EventTypePill({ type }: { type: string }) {
   );
 }
 
+const CLAIM_STATUS_COLORS: Record<string, { bg: string; color: string }> = {
+  submitted: { bg: "var(--primary-soft)", color: "var(--primary)" },
+  under_review: { bg: "#fff3cd", color: "#856404" },
+  approved: { bg: "var(--secondary-container)", color: "var(--on-secondary-container)" },
+  rejected: { bg: "#ffe4e4", color: "#c0392b" },
+  paid: { bg: "var(--surface-container)", color: "var(--muted)" },
+};
+
 export function DashboardView() {
-  const { rsvpdEventIds, setRsvpdEventIds, setLocalEvents, threads, announce, setView, currentUser, localEvents, localSocieties, localForums, viewSociety } = useApp();
+  const { rsvpdEventIds, setRsvpdEventIds, setLocalEvents, threads, announce, setView, currentUser, localEvents, localSocieties, localForums, localClaims, claimStatuses, viewSociety } = useApp();
   const firstName = currentUser.name.split(" ")[0];
 
   const now = new Date().toISOString();
@@ -268,6 +276,39 @@ export function DashboardView() {
             ))}
           </article>
         )}
+
+        {/* My Claims */}
+        {(() => {
+          const myClaims = localClaims
+            .filter((c) => c.claimant === currentUser.name)
+            .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
+            .slice(0, 5);
+          if (myClaims.length === 0) return null;
+          return (
+            <article className="stitch-card bento-wide">
+              <div className="section-row">
+                <h3><CurrencyGbp size={18} weight="fill" style={{ display: "inline", verticalAlign: "middle" }} /> My Claims</h3>
+                <button type="button" className="text-action" onClick={() => setView("claims")}>View All</button>
+              </div>
+              {myClaims.map((claim) => {
+                const status = claimStatuses[claim.id] ?? claim.status;
+                const colors = CLAIM_STATUS_COLORS[status] ?? CLAIM_STATUS_COLORS.submitted;
+                return (
+                  <div key={claim.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--outline-variant, rgba(208,194,213,0.25))" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--on-surface)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{claim.purpose}</div>
+                      <div style={{ fontSize: 11, color: "var(--muted)" }}>{claim.submittedAt}</div>
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--on-surface)", flexShrink: 0 }}>£{claim.amount.toFixed(2)}</div>
+                    <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "3px 8px", borderRadius: 999, background: colors.bg, color: colors.color, flexShrink: 0 }}>
+                      {status.replace("_", " ")}
+                    </span>
+                  </div>
+                );
+              })}
+            </article>
+          );
+        })()}
 
       </section>
     </main>

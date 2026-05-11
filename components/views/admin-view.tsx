@@ -1,12 +1,12 @@
 "use client";
 
-import { Database, ShieldCheck, UsersThree } from "@phosphor-icons/react";
+import { CurrencyGbp, Database, ShieldCheck, UsersThree } from "@phosphor-icons/react";
 import { useApp } from "@/lib/app-context";
 import { downloadCsv } from "@/lib/utils";
 import { Metric, PageHeader, TimelineItem } from "@/components/ui/primitives";
 
 export function AdminView() {
-  const { setView, localSocieties, localEvents, localClaims, localForums, localResources } = useApp();
+  const { setView, localSocieties, localEvents, localClaims, localForums, localResources, currentUser } = useApp();
 
   const totalMembers = localSocieties.reduce((sum, s) => sum + s.members, 0);
   const activeSocieties = localSocieties.filter((s) => s.status === "active").length;
@@ -150,6 +150,33 @@ export function AdminView() {
         </div>
         <span style={{ fontSize: 18, color: "var(--muted)" }} aria-hidden="true">›</span>
       </button>
+
+      {/* Claims quick-access — visible to finance reviewers and above */}
+      {(currentUser.role === "finance_reviewer" || currentUser.role === "ukssc_staff" || currentUser.role === "super_admin") && (
+        <button
+          type="button"
+          className="stitch-card"
+          style={{ padding: "20px 24px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", marginTop: 4, width: "100%", border: "none", textAlign: "left" }}
+          onClick={() => setView("claims")}
+          aria-label={`Review reimbursement claims — ${openClaims} pending`}
+        >
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: openClaims > 0 ? "#fef3c7" : "var(--primary-soft)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <CurrencyGbp size={20} style={{ color: openClaims > 0 ? "#b45309" : "var(--primary)" }} weight="fill" />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--on-surface)", marginBottom: 2 }}>Reimbursement Claims</div>
+            <div style={{ fontSize: 13, color: "var(--muted)" }}>
+              {openClaims > 0 ? `${openClaims} claim${openClaims > 1 ? "s" : ""} awaiting review` : "No pending claims"}
+            </div>
+          </div>
+          {openClaims > 0 && (
+            <span style={{ fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 999, background: "#fef3c7", color: "#b45309" }}>
+              {openClaims}
+            </span>
+          )}
+          <span style={{ fontSize: 18, color: "var(--muted)" }} aria-hidden="true">›</span>
+        </button>
+      )}
     </main>
   );
 }
