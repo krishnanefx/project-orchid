@@ -1,10 +1,59 @@
 "use client";
 
+import { CaretDown, CaretUp } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { useApp } from "@/lib/app-context";
 import { createForumThreadAction, getForumThreadsAction } from "@/lib/actions";
 import { PageHeader, Thread } from "@/components/ui/primitives";
 import type { ForumThread } from "@/lib/types";
+
+function ThreadRow({ thread, timeAgo }: { thread: ForumThread; timeAgo: (iso: string) => string }) {
+  const [expanded, setExpanded] = useState(false);
+  const hasBody = !!(thread.body?.trim());
+
+  return (
+    <div style={{ borderBottom: "1px solid var(--outline-variant, rgba(208,194,213,0.25))" }}>
+      <button
+        type="button"
+        onClick={() => hasBody && setExpanded((v) => !v)}
+        style={{
+          display: "flex", gap: 12, alignItems: "flex-start",
+          width: "100%", textAlign: "left", padding: "12px 0",
+          background: "none", border: "none",
+          cursor: hasBody ? "pointer" : "default",
+        }}
+      >
+        <div style={{ textAlign: "center", minWidth: 28, color: "var(--muted)", paddingTop: 2 }}>
+          <CaretUp size={13} />
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--on-surface)", lineHeight: 1.2 }}>0</div>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)", lineHeight: 1.3, marginBottom: 3 }}>
+            {thread.title}
+          </div>
+          <div style={{ fontSize: 11, color: "var(--muted)" }}>
+            {timeAgo(thread.createdAt)}
+            {hasBody && !expanded && (
+              <> · <span style={{ color: "var(--primary)" }}>read more</span></>
+            )}
+          </div>
+        </div>
+        {hasBody && (
+          <div style={{ color: "var(--muted)", flexShrink: 0, paddingTop: 2 }}>
+            {expanded ? <CaretUp size={13} /> : <CaretDown size={13} />}
+          </div>
+        )}
+      </button>
+      {expanded && hasBody && (
+        <div style={{ padding: "0 0 14px 40px" }}>
+          <p style={{ fontSize: 14, color: "var(--on-surface)", lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap" }}>
+            {thread.body}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function ForumsView() {
   const { announce, localForums, currentUser, setLocalForums } = useApp();
@@ -168,12 +217,7 @@ export function ForumsView() {
                 <p style={{ color: "var(--muted)", fontSize: 13, padding: "8px 0" }}>No threads yet. Be the first to post!</p>
               ) : (
                 threads.map((t) => (
-                  <Thread
-                    key={t.id}
-                    title={t.title}
-                    count="0"
-                    meta={`${t.body ? t.body.slice(0, 60) + (t.body.length > 60 ? "…" : "") : "No body"} · ${timeAgo(t.createdAt)}`}
-                  />
+                  <ThreadRow key={t.id} thread={t} timeAgo={timeAgo} />
                 ))
               )}
             </article>
