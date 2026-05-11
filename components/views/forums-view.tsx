@@ -21,27 +21,63 @@ function PinnedBanner({ message }: { message: string }) {
   );
 }
 
+const VOTES_KEY = "orchid-thread-votes";
+
+function loadVotes(): Record<string, number> {
+  if (typeof window === "undefined") return {};
+  try { return JSON.parse(localStorage.getItem(VOTES_KEY) ?? "{}"); } catch { return {}; }
+}
+
+function saveVotes(votes: Record<string, number>) {
+  try { localStorage.setItem(VOTES_KEY, JSON.stringify(votes)); } catch { /* ignore */ }
+}
+
 function ThreadRow({ thread, timeAgo }: { thread: ForumThread; timeAgo: (iso: string) => string }) {
   const [expanded, setExpanded] = useState(false);
+  const [votes, setVotes] = useState<Record<string, number>>({});
   const hasBody = !!(thread.body?.trim());
+  const voted = votes[thread.id] === 1;
+  const count = voted ? 1 : 0;
+
+  useEffect(() => {
+    setVotes(loadVotes());
+  }, []);
+
+  function handleVote(e: React.MouseEvent) {
+    e.stopPropagation();
+    const next = { ...votes, [thread.id]: voted ? 0 : 1 };
+    setVotes(next);
+    saveVotes(next);
+  }
 
   return (
     <div style={{ borderBottom: "1px solid var(--outline-variant, rgba(208,194,213,0.25))" }}>
-      <button
-        type="button"
-        onClick={() => hasBody && setExpanded((v) => !v)}
-        style={{
-          display: "flex", gap: 12, alignItems: "flex-start",
-          width: "100%", textAlign: "left", padding: "12px 0",
-          background: "none", border: "none",
-          cursor: hasBody ? "pointer" : "default",
-        }}
-      >
-        <div style={{ textAlign: "center", minWidth: 28, color: "var(--muted)", paddingTop: 2 }}>
-          <CaretUp size={13} />
-          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--on-surface)", lineHeight: 1.2 }}>0</div>
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 0" }}>
+        <button
+          type="button"
+          onClick={handleVote}
+          aria-label={voted ? "Remove upvote" : "Upvote thread"}
+          aria-pressed={voted}
+          style={{
+            textAlign: "center", minWidth: 28, background: "none", border: "none",
+            cursor: "pointer", padding: 0, color: voted ? "var(--primary)" : "var(--muted)",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 1, paddingTop: 2,
+          }}
+        >
+          <CaretUp size={13} weight={voted ? "fill" : "regular"} />
+          <div style={{ fontSize: 11, fontWeight: 700, lineHeight: 1.2, color: voted ? "var(--primary)" : "var(--on-surface)" }}>
+            {count}
+          </div>
+        </button>
+        <button
+          type="button"
+          onClick={() => hasBody && setExpanded((v) => !v)}
+          style={{
+            flex: 1, minWidth: 0, textAlign: "left",
+            background: "none", border: "none",
+            cursor: hasBody ? "pointer" : "default", padding: 0,
+          }}
+        >
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)", lineHeight: 1.3 }}>
               {thread.title}
@@ -56,13 +92,13 @@ function ThreadRow({ thread, timeAgo }: { thread: ForumThread; timeAgo: (iso: st
               <> · <span style={{ color: "var(--primary)" }}>read more</span></>
             )}
           </div>
-        </div>
+        </button>
         {hasBody && (
           <div style={{ color: "var(--muted)", flexShrink: 0, paddingTop: 2 }}>
             {expanded ? <CaretUp size={13} /> : <CaretDown size={13} />}
           </div>
         )}
-      </button>
+      </div>
       {expanded && hasBody && (
         <div style={{ padding: "0 0 14px 40px" }}>
           <p style={{ fontSize: 14, color: "var(--on-surface)", lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap" }}>
