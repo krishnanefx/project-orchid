@@ -4,11 +4,13 @@ import {
   ArrowLeft,
   CalendarBlank,
   Camera,
+  ChatCircleText,
   CheckCircle,
   DownloadSimple,
   FloppyDisk,
   Image as ImageIcon,
   Link as LinkIcon,
+  Lock,
   PencilSimple,
   Plus,
   Trash,
@@ -19,18 +21,19 @@ import {
 } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/lib/app-context";
-import { checkInAction, createEventAction, getEventRsvpsAction, getSocietyMembersAction, updateEventStatusAction, updateSocietyAction } from "@/lib/actions";
+import { checkInAction, createEventAction, createForumBoardAction, getEventRsvpsAction, getSocietyMembersAction, updateEventStatusAction, updateSocietyAction } from "@/lib/actions";
 import { downloadCsv } from "@/lib/utils";
 import { universities } from "@/lib/data";
-import type { EventDraft, OrchidEvent } from "@/lib/types";
+import type { EventDraft, ForumBoard, OrchidEvent } from "@/lib/types";
 
-type Tab = "profile" | "events" | "members" | "media";
+type Tab = "profile" | "events" | "members" | "media" | "forums";
 
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ size?: number; weight?: "regular" | "fill" }> }[] = [
   { id: "profile", label: "Profile", icon: PencilSimple },
   { id: "events", label: "Events", icon: CalendarBlank },
   { id: "members", label: "Members", icon: UsersThree },
-  { id: "media", label: "Media", icon: ImageIcon }
+  { id: "media", label: "Media", icon: ImageIcon },
+  { id: "forums", label: "Forums", icon: ChatCircleText }
 ];
 
 const EVENT_STATUS_COLORS: Record<string, { bg: string; color: string }> = {
@@ -236,6 +239,13 @@ export function SocietyAdmin() {
             updateSociety(society.id, patch);
             announce("Media updated.");
           }}
+        />
+      )}
+      {tab === "forums" && (
+        <ForumsTab
+          societyId={society.id}
+          isCommittee={isCommittee}
+          announce={announce}
         />
       )}
     </main>
@@ -1006,6 +1016,147 @@ function MediaTab({
           }}
         />
       </SectionCard>
+    </div>
+  );
+}
+
+// ── Forums Tab ────────────────────────────────────────────────────────────────
+
+function ForumsTab({
+  societyId,
+  isCommittee,
+  announce
+}: {
+  societyId: string;
+  isCommittee: boolean;
+  announce: (msg: string) => void;
+}) {
+  const { localForums, setLocalForums } = useApp();
+  const [showForm, setShowForm] = useState(false);
+  const [boardName, setBoardName] = useState("");
+  const [visibility, setVisibility] = useState<ForumBoard["visibility"]>("membership_restricted");
+  const [creating, setCreating] = useState(false);
+
+  const societyBoards = localForums.filter((b) => b.societyId === societyId);
+
+  async function handleCreate() {
+    const name = boardName.trim();
+    if (!name) { announce("Board name is required."); return; }
+    setCreating(true);
+    const optimistic: ForumBoard = {
+      id: `board-${Date.now()}`,
+      name,
+      visibility,
+      societyId,
+      threads: 0,
+      replies: 0,
+      pinned: "",
+      locked: false,
+    };
+    const withNew = [...localForums, optimistic];
+    setLocalForums(withNew);
+    setBoardName("");
+    setShowForm(false);
+    announce(`Forum board "${name}" created.`);
+    try {
+      const created = await createForumBoardAction({ name, visibility, societyId });
+      setLocalForums(withNew.map((b) => b.id === optimistic.id ? created : b));
+    } catch {
+      announce("Board created locally but failed to sync — please refresh.");
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
+          {societyBoards.length} board{societyBoards.length !== 1 ? "s" : ""} for this society
+        </p>
+        {isCommittee && (
+          <button
+            type="button"
+            className="stitch-primary"
+            onClick={() => setShowForm((v) => !v)}
+          >
+            <Plus size={14} /> New Board
+          </button>
+        )}
+      </div>
+
+      {showForm && isCommittee && (
+        <div className="stitch-card" style={{ padding: 20, marginBottom: 16, border: "1.5px solid var(--primary)" }}>
+          <h4 style={{ fontSize: 13, fontWeight: 700, color: "var(--on-surface)", marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            New Forum Board
+          </h4>
+          <FieldRow label="Board Name">
+            <input
+              style={inputStyle}
+              value={boardName}
+              onChange={(e) => setBoardName(e.target.value)}
+              placeholder="e.g. Events Feedback, General Chat"
+              onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+            />
+          </FieldRow>
+          <FieldRow label="Visibility">
+            <select
+              style={inputStyle}
+              value={visibility}
+              onChange={(e) => setVisibility(e.target.value as ForumBoard["visibility"])}
+            >
+              <option value="membership_restricted">Society members only</option>
+              <option value="open_to_verified_users">All UKSSC members</option>
+            </select>
+          </FieldRow>
+          <div style={{ display: "flex", gap: 10, marginTop: 4, justifyContent: "flex-end" }}>
+            <button type="button" className="stitch-secondary" onClick={() => setShowForm(false)}>Cancel</button>
+            <button type="button" className="stitch-primary" onClick={handleCreate} disabled={creating}>
+              <FloppyDisk size={14} /> Create Board
+            </button>
+          </div>
+        </div>
+      )}
+
+      {societyBoards.length === 0 ? (
+        <div className="stitch-card" style={{ padding: 32, textAlign: "center" }}>
+          <ChatCircleText size={32} style={{ color: "var(--muted)", marginBottom: 10 }} />
+          <p style={{ fontSize: 14, color: "var(--muted)", margin: 0 }}>
+            No forum boards yet.{isCommittee ? " Create one above to start discussions." : ""}
+          </p>
+        </div>
+      ) : (
+        <div style={{ display: "grid", gap: 10 }}>
+          {societyBoards.map((board) => (
+            <div key={board.id} className="stitch-card" style={{ padding: "14px 20px", display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{
+                width: 38, height: 38, borderRadius: 10, background: "var(--primary-soft)",
+                display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0
+              }}>
+                {board.locked ? <Lock size={16} style={{ color: "var(--primary)" }} /> : <ChatCircleText size={16} style={{ color: "var(--primary)" }} />}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)" }}>{board.name}</div>
+                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
+                  {board.threads} thread{board.threads !== 1 ? "s" : ""} &middot; {board.replies} repl{board.replies !== 1 ? "ies" : "y"}
+                </div>
+              </div>
+              <span style={{
+                fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "3px 10px", borderRadius: 999,
+                background: board.visibility === "membership_restricted" ? "var(--secondary-container)" : "var(--primary-soft)",
+                color: board.visibility === "membership_restricted" ? "var(--on-secondary-container)" : "var(--primary)"
+              }}>
+                {board.visibility === "membership_restricted" ? "Members only" : "Open"}
+              </span>
+              {board.locked && (
+                <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "3px 10px", borderRadius: 999, background: "var(--surface-container)", color: "var(--muted)" }}>
+                  Locked
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
