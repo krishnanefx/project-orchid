@@ -417,6 +417,14 @@ export async function checkInAction(eventId: string): Promise<void> {
   await supabase.from("events").update({ checked_in: current + 1 }).eq("id", eventId);
 }
 
+export async function updateEventStatusAction(
+  eventId: string,
+  status: "open" | "waitlist" | "closed"
+): Promise<void> {
+  const supabase = await createClient();
+  await supabase.from("events").update({ status }).eq("id", eventId);
+}
+
 export async function rsvpEventAction(
   eventId: string,
   userId: string

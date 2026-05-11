@@ -81,11 +81,19 @@ export function ClaimsView() {
   }
 
   function exportClaims() {
+    const rows = statusFilter === "All" ? localClaims : localClaims.filter((c) => (claimStatuses[c.id] ?? c.status) === statusFilter);
     downloadCsv("project-orchid-reimbursements.csv", [
-      ["Claimant", "Purpose", "Amount", "Status"],
-      ...localClaims.map((claim) => [claim.claimant, claim.purpose, claim.amount.toFixed(2), claimStatuses[claim.id] ?? claim.status])
+      ["Claimant", "Purpose", "Amount (GBP)", "Status", "Submitted", "Receipt"],
+      ...rows.map((claim) => [
+        claim.claimant,
+        claim.purpose,
+        claim.amount.toFixed(2),
+        claimStatuses[claim.id] ?? claim.status,
+        claim.submittedAt,
+        claim.receiptName,
+      ])
     ]);
-    announce("Claims CSV generated.");
+    announce("Claims exported to CSV.");
   }
 
   const filteredClaims = statusFilter === "All"
@@ -128,7 +136,7 @@ export function ClaimsView() {
               {statusFilter === "All" ? "All Claims" : `${statusFilter.replace("_", " ")} claims`}
               {filteredClaims.length > 0 && (
                 <span style={{ fontWeight: 400, fontSize: 13, color: "var(--muted)", marginLeft: 8 }}>
-                  GBP {totalAmount.toFixed(2)} total
+                  £{totalAmount.toFixed(2)} total
                 </span>
               )}
             </h3>
@@ -152,7 +160,7 @@ export function ClaimsView() {
                         <div style={{ fontSize: 11, color: "var(--muted)" }}>{claim.submittedAt}</div>
                       </td>
                       <td>{claim.purpose}</td>
-                      <td style={{ fontWeight: 700 }}>GBP {claim.amount.toFixed(2)}</td>
+                      <td style={{ fontWeight: 700 }}>£{claim.amount.toFixed(2)}</td>
                       <td>
                         <select
                           value={status}

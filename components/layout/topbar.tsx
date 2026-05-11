@@ -1,16 +1,18 @@
 "use client";
 
-import { Bell, List, MagnifyingGlass, Question } from "@phosphor-icons/react";
+import { Bell, CalendarBlank, ChatCircleText, CurrencyGbp, List, MagnifyingGlass, Question, X } from "@phosphor-icons/react";
 import { useRef, useState } from "react";
 import { useApp } from "@/lib/app-context";
 import { navItems } from "@/components/layout/sidebar";
 import { universities } from "@/lib/data";
 
 export function TopBar() {
-  const { view, setView, currentUser, localSocieties, localEvents, viewSociety } = useApp();
+  const { view, setView, currentUser, localSocieties, localEvents, localClaims, localForums, viewSociety } = useApp();
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
+  const [bellOpen, setBellOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const bellRef = useRef<HTMLButtonElement>(null);
 
   const initials = currentUser.name
     .split(" ")
@@ -21,6 +23,45 @@ export function TopBar() {
 
   const q = query.toLowerCase();
   const showResults = focused && q.length >= 2;
+
+  // Build recent activity items for the bell panel
+  const now = new Date();
+  type ActivityItem = { id: string; icon: React.ReactNode; text: string; time: string; onClick?: () => void };
+  const activityItems: ActivityItem[] = [
+    ...localEvents
+      .filter((e) => {
+        const d = new Date(e.startsAt);
+        const diff = (d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+        return diff >= 0 && diff <= 30;
+      })
+      .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+      .slice(0, 3)
+      .map((e) => ({
+        id: `evt-${e.id}`,
+        icon: <CalendarBlank size={14} weight="fill" style={{ color: "var(--primary)", flexShrink: 0 }} />,
+        text: e.title,
+        time: new Date(e.startsAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }),
+        onClick: () => { setBellOpen(false); setView("events"); },
+      })),
+    ...localClaims
+      .filter((c) => c.status === "submitted" || c.status === "under_review")
+      .slice(0, 2)
+      .map((c) => ({
+        id: `claim-${c.id}`,
+        icon: <CurrencyGbp size={14} weight="fill" style={{ color: "#856404", flexShrink: 0 }} />,
+        text: `${c.claimant}: £${c.amount} claim ${c.status === "submitted" ? "awaiting review" : "under review"}`,
+        time: new Date(c.submittedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }),
+        onClick: () => { setBellOpen(false); setView("claims"); },
+      })),
+    ...localForums.slice(0, 2).map((f) => ({
+      id: `forum-${f.id}`,
+      icon: <ChatCircleText size={14} weight="fill" style={{ color: "var(--on-secondary-container)", flexShrink: 0 }} />,
+      text: `${f.name}: ${f.threads} thread${f.threads !== 1 ? "s" : ""}`,
+      time: "Board",
+      onClick: () => { setBellOpen(false); setView("forums"); },
+    })),
+  ].slice(0, 6);
+  const unreadCount = activityItems.length;
 
   const societyResults = showResults
     ? localSocieties.filter((s) => {
@@ -161,7 +202,80 @@ export function TopBar() {
         ))}
       </div>
       <div className="top-actions">
-        <button className="icon-button notify" type="button"><Bell size={18} /></button>
+        <div style={{ position: "relative" }}>
+          <button
+            ref={bellRef}
+            className="icon-button notify"
+            type="button"
+            aria-label="Recent activity"
+            onClick={() => setBellOpen((o) => !o)}
+          >
+            <Bell size={18} />
+            {unreadCount > 0 && (
+              <span style={{
+                position: "absolute", top: 2, right: 2,
+                width: 8, height: 8, borderRadius: "50%",
+                background: "var(--primary)", border: "2px solid var(--surface, #fff)",
+                pointerEvents: "none",
+              }} />
+            )}
+          </button>
+          {bellOpen && (
+            <div
+              style={{
+                position: "absolute", top: "calc(100% + 8px)", right: 0,
+                width: 300,
+                background: "var(--surface-bright, #fff)",
+                border: "1.5px solid var(--outline-variant, rgba(208,194,213,0.4))",
+                borderRadius: 12,
+                boxShadow: "0 8px 30px rgba(0,0,0,0.12)",
+                zIndex: 200,
+                overflow: "hidden",
+              }}
+              onMouseLeave={() => setTimeout(() => setBellOpen(false), 300)}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px 8px", borderBottom: "1px solid var(--outline-variant, rgba(208,194,213,0.3))" }}>
+                <span style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--on-surface)" }}>
+                  Recent Activity
+                </span>
+                <button type="button" onClick={() => setBellOpen(false)} style={{ border: 0, background: "none", cursor: "pointer", color: "var(--muted)", padding: 2 }}>
+                  <X size={14} />
+                </button>
+              </div>
+              {activityItems.length === 0 ? (
+                <div style={{ padding: "20px 14px", fontSize: 13, color: "var(--muted)", textAlign: "center" }}>
+                  No recent activity.
+                </div>
+              ) : (
+                <div>
+                  {activityItems.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={item.onClick}
+                      style={{
+                        display: "flex", alignItems: "flex-start", gap: 10,
+                        width: "100%", padding: "10px 14px", border: "none", background: "none",
+                        cursor: item.onClick ? "pointer" : "default", textAlign: "left",
+                        borderBottom: "1px solid var(--outline-variant, rgba(208,194,213,0.2))",
+                      }}
+                      onMouseEnter={(e) => { if (item.onClick) e.currentTarget.style.background = "var(--primary-soft)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
+                    >
+                      <span style={{ marginTop: 2 }}>{item.icon}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--on-surface)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {item.text}
+                        </div>
+                        <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>{item.time}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
         <button className="icon-button hide-sm" type="button"><Question size={18} /></button>
         <button
           type="button"

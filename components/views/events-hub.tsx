@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarBlank, List, MapPin, UsersThree } from "@phosphor-icons/react";
+import { CalendarBlank, CaretDown, CaretUp, List, MapPin, UsersThree } from "@phosphor-icons/react";
 import { useState } from "react";
 import { useApp } from "@/lib/app-context";
 import { rsvpEventAction } from "@/lib/actions";
@@ -36,62 +36,81 @@ function formatTime(startsAt: string) {
 }
 
 function EventRow({ event, onRsvp, rsvpd }: { event: OrchidEvent; onRsvp: () => void; rsvpd: boolean }) {
+  const [expanded, setExpanded] = useState(false);
   const typeStyle = TYPE_COLORS[event.type] ?? TYPE_COLORS.ukssc;
   const statusStyle = STATUS_COLORS[event.status] ?? STATUS_COLORS.closed;
   const spotsLeft = event.capacity - event.rsvps;
+  const hasDetails = !!(event.description?.trim());
 
   return (
-    <div className="stitch-card" style={{ padding: "18px 22px", display: "flex", alignItems: "center", gap: 18, marginBottom: 10 }}>
-      {/* Date column */}
-      <div style={{ textAlign: "center", minWidth: 48, flexShrink: 0 }}>
-        <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "var(--primary)", letterSpacing: "0.05em" }}>
-          {new Date(event.startsAt).toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" })}
-        </div>
-        <div style={{ fontSize: 26, fontWeight: 800, color: "var(--on-surface)", lineHeight: 1.1 }}>
-          {new Date(event.startsAt).toLocaleDateString("en-GB", { day: "numeric", timeZone: "UTC" })}
-        </div>
-        <div style={{ fontSize: 10, color: "var(--muted)" }}>
-          {formatTime(event.startsAt)}
-        </div>
-      </div>
-
-      {/* Main info */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", gap: 6, marginBottom: 5, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "2px 8px", borderRadius: 999, background: typeStyle.bg, color: typeStyle.color }}>
-            {TYPE_LABELS[event.type] ?? event.type}
-          </span>
-          <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "2px 8px", borderRadius: 999, background: statusStyle.bg, color: statusStyle.color }}>
-            {event.status}
-          </span>
-        </div>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--on-surface)", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {event.title}
-        </div>
-        {event.description && (
-          <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {event.description}
+    <div className="stitch-card" style={{ padding: 0, marginBottom: 10, overflow: "hidden" }}>
+      <div style={{ padding: "18px 22px", display: "flex", alignItems: "center", gap: 18 }}>
+        {/* Date column */}
+        <div style={{ textAlign: "center", minWidth: 48, flexShrink: 0 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "var(--primary)", letterSpacing: "0.05em" }}>
+            {new Date(event.startsAt).toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" })}
           </div>
-        )}
-        <div style={{ display: "flex", gap: 14, fontSize: 12, color: "var(--muted)", flexWrap: "wrap" }}>
-          <span><MapPin size={12} style={{ display: "inline", verticalAlign: "middle" }} /> {event.location}</span>
-          <span><UsersThree size={12} style={{ display: "inline", verticalAlign: "middle" }} /> {event.rsvps}/{event.capacity} RSVPs</span>
-          {spotsLeft > 0 && spotsLeft <= 20 && (
-            <span style={{ color: "#856404", fontWeight: 600 }}>Only {spotsLeft} spots left</span>
+          <div style={{ fontSize: 26, fontWeight: 800, color: "var(--on-surface)", lineHeight: 1.1 }}>
+            {new Date(event.startsAt).toLocaleDateString("en-GB", { day: "numeric", timeZone: "UTC" })}
+          </div>
+          <div style={{ fontSize: 10, color: "var(--muted)" }}>
+            {formatTime(event.startsAt)}
+          </div>
+        </div>
+
+        {/* Main info */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", gap: 6, marginBottom: 5, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "2px 8px", borderRadius: 999, background: typeStyle.bg, color: typeStyle.color }}>
+              {TYPE_LABELS[event.type] ?? event.type}
+            </span>
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "2px 8px", borderRadius: 999, background: statusStyle.bg, color: statusStyle.color }}>
+              {event.status}
+            </span>
+          </div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--on-surface)", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {event.title}
+          </div>
+          <div style={{ display: "flex", gap: 14, fontSize: 12, color: "var(--muted)", flexWrap: "wrap" }}>
+            <span><MapPin size={12} style={{ display: "inline", verticalAlign: "middle" }} /> {event.location}</span>
+            <span><UsersThree size={12} style={{ display: "inline", verticalAlign: "middle" }} /> {event.rsvps}/{event.capacity}</span>
+            {spotsLeft > 0 && spotsLeft <= 20 && (
+              <span style={{ color: "#856404", fontWeight: 600 }}>Only {spotsLeft} left</span>
+            )}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+          {hasDetails && (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              aria-label={expanded ? "Collapse details" : "Expand details"}
+              style={{ border: 0, background: expanded ? "var(--primary-soft)" : "none", cursor: "pointer", color: "var(--primary)", padding: 6, borderRadius: 6, display: "flex" }}
+            >
+              {expanded ? <CaretUp size={15} /> : <CaretDown size={15} />}
+            </button>
+          )}
+          {event.status !== "closed" && (
+            <button
+              type="button"
+              className={rsvpd ? "stitch-secondary" : "stitch-primary"}
+              onClick={onRsvp}
+            >
+              {rsvpd ? "RSVP'd ✓" : "RSVP"}
+            </button>
           )}
         </div>
       </div>
 
-      {/* Action */}
-      {event.status !== "closed" && (
-        <button
-          type="button"
-          className={rsvpd ? "stitch-secondary" : "stitch-primary"}
-          style={{ flexShrink: 0 }}
-          onClick={onRsvp}
-        >
-          {rsvpd ? "RSVP'd ✓" : "RSVP"}
-        </button>
+      {/* Expandable details */}
+      {expanded && hasDetails && (
+        <div style={{ borderTop: "1px solid var(--outline-variant, rgba(208,194,213,0.3))", padding: "14px 22px 16px", background: "var(--surface-container, #faf7fb)" }}>
+          <p style={{ fontSize: 14, color: "var(--on-surface)", lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap" }}>
+            {event.description}
+          </p>
+        </div>
       )}
     </div>
   );

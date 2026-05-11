@@ -1,7 +1,8 @@
 "use client";
 
-import { FloppyDisk, User } from "@phosphor-icons/react";
+import { FloppyDisk, LockKey, User } from "@phosphor-icons/react";
 import { useState } from "react";
+import { createBrowserClient } from "@supabase/ssr";
 import { useApp } from "@/lib/app-context";
 import { updateProfileAction } from "@/lib/actions";
 import { universities } from "@/lib/data";
@@ -40,6 +41,10 @@ export function SettingsView() {
   const [accessibility, setAccessibility] = useState(currentUser.accessibilityNeeds ?? "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [pwStatus, setPwStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [pwError, setPwError] = useState("");
 
   const university = universities.find((u) => u.id === currentUser.universityId);
   const mySociety = localSocieties.find((s) => s.id === currentUser.societyId);
@@ -77,6 +82,36 @@ export function SettingsView() {
       announce("Failed to save — changes applied locally only.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handlePasswordChange() {
+    if (newPassword.length < 8) {
+      setPwError("Password must be at least 8 characters.");
+      setPwStatus("error");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPwError("Passwords do not match.");
+      setPwStatus("error");
+      return;
+    }
+    setPwStatus("saving");
+    setPwError("");
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      setPwError(error.message);
+      setPwStatus("error");
+    } else {
+      setNewPassword("");
+      setConfirmPassword("");
+      setPwStatus("saved");
+      announce("Password updated successfully.");
+      setTimeout(() => setPwStatus("idle"), 3000);
     }
   }
 
@@ -213,7 +248,7 @@ export function SettingsView() {
           </div>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 24 }}>
           <button
             type="button"
             className="stitch-primary"
@@ -230,6 +265,68 @@ export function SettingsView() {
             )}
           </button>
         </div>
+
+        {/* Password change — only shown when Supabase is configured */}
+        {process.env.NEXT_PUBLIC_SUPABASE_URL && (
+          <div className="stitch-card" style={{ padding: 24, marginBottom: 24 }}>
+            <h3 style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--on-surface)", marginBottom: 6 }}>
+              Change Password
+            </h3>
+            <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 20 }}>
+              Leave blank to keep your current password.
+            </p>
+            {pwStatus === "error" && (
+              <div style={{ marginBottom: 14, padding: "10px 14px", borderRadius: 8, background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", fontSize: 13 }}>
+                {pwError}
+              </div>
+            )}
+            {pwStatus === "saved" && (
+              <div style={{ marginBottom: 14, padding: "10px 14px", borderRadius: 8, background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#16a34a", fontSize: 13 }}>
+                Password updated successfully.
+              </div>
+            )}
+            <div style={{ display: "grid", gap: 14 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                  New Password
+                </label>
+                <input
+                  style={inputStyle}
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="At least 8 characters"
+                  autoComplete="new-password"
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                  Confirm New Password
+                </label>
+                <input
+                  style={inputStyle}
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Re-enter new password"
+                  autoComplete="new-password"
+                />
+              </div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+              <button
+                type="button"
+                className="stitch-secondary"
+                onClick={handlePasswordChange}
+                disabled={pwStatus === "saving" || !newPassword}
+                style={{ display: "flex", alignItems: "center", gap: 8 }}
+              >
+                <LockKey size={15} />
+                {pwStatus === "saving" ? "Updating…" : "Update Password"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );

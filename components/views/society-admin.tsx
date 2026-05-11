@@ -19,7 +19,7 @@ import {
 } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/lib/app-context";
-import { checkInAction, createEventAction, getEventRsvpsAction, getSocietyMembersAction, updateSocietyAction } from "@/lib/actions";
+import { checkInAction, createEventAction, getEventRsvpsAction, getSocietyMembersAction, updateEventStatusAction, updateSocietyAction } from "@/lib/actions";
 import { downloadCsv } from "@/lib/utils";
 import { universities } from "@/lib/data";
 import type { EventDraft, OrchidEvent } from "@/lib/types";
@@ -451,6 +451,7 @@ function EventsTab({
   const [rsvpLists, setRsvpLists] = useState<Record<string, { id: string; name: string; email: string }[]>>({});
   const [loadingRsvps, setLoadingRsvps] = useState<string | null>(null);
   const [checkingIn, setCheckingIn] = useState<string | null>(null);
+  const [togglingStatus, setTogglingStatus] = useState<string | null>(null);
   const [draft, setDraft] = useState<EventDraft>({
     title: "",
     type: "society",
@@ -540,6 +541,21 @@ function EventsTab({
     setLocalEvents((prev) => prev.filter((e) => e.id !== id));
     setAllEvents(allEvents.filter((e) => e.id !== id));
     announce("Event removed.");
+  }
+
+  async function handleStatusToggle(event: OrchidEvent) {
+    const next: OrchidEvent["status"] = event.status === "closed" ? "open" : event.status === "open" ? "closed" : "open";
+    setTogglingStatus(event.id);
+    setLocalEvents((prev) => prev.map((e) => e.id === event.id ? { ...e, status: next } : e));
+    setAllEvents(allEvents.map((e) => e.id === event.id ? { ...e, status: next } : e));
+    try {
+      await updateEventStatusAction(event.id, next);
+      announce(`Event ${next === "closed" ? "closed" : "re-opened"}.`);
+    } catch {
+      announce("Status update failed — change applied locally.");
+    } finally {
+      setTogglingStatus(null);
+    }
   }
 
   return (
@@ -638,6 +654,17 @@ function EventsTab({
                         style={{ border: 0, background: "none", cursor: "pointer", color: "var(--primary)", padding: 6, borderRadius: 6, display: "flex" }}
                       >
                         <CheckCircle size={15} weight={checkingIn === event.id ? "fill" : "regular"} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleStatusToggle(event)}
+                        disabled={togglingStatus === event.id}
+                        title={event.status === "closed" ? "Re-open event" : "Close event"}
+                        style={{ border: 0, background: "none", cursor: "pointer", color: event.status === "closed" ? "var(--primary)" : "var(--muted)", padding: 6, borderRadius: 6, display: "flex" }}
+                      >
+                        {event.status === "closed"
+                          ? <ArrowLeft size={15} style={{ transform: "rotate(90deg)" }} />
+                          : <X size={15} />}
                       </button>
                       <button type="button" onClick={() => handleEdit(event)} style={{ border: 0, background: "none", cursor: "pointer", color: "var(--muted)", padding: 6, borderRadius: 6, display: "flex" }}>
                         <PencilSimple size={15} />
