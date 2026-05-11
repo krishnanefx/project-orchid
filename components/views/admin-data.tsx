@@ -10,7 +10,7 @@ import {
   CheckCircle,
   Warning
 } from "@phosphor-icons/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useApp } from "@/lib/app-context";
 import { universities } from "@/lib/data";
 import {
@@ -18,16 +18,19 @@ import {
   createEventAction,
   createResourceAction,
   createForumBoardAction,
+  getAllProfilesAction,
+  updateMemberRoleAction,
 } from "@/lib/actions";
-import type { ForumBoard, OrchidEvent, Resource, Society } from "@/lib/types";
+import type { ForumBoard, MemberRow, OrchidEvent, Resource, Role, Society } from "@/lib/types";
 
-type Tab = "societies" | "events" | "resources" | "forums";
+type Tab = "societies" | "events" | "resources" | "forums" | "members";
 
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ size?: number; weight?: "regular" | "fill" }> }[] = [
   { id: "societies", label: "Societies", icon: UsersThree },
   { id: "events", label: "Events", icon: CalendarBlank },
   { id: "resources", label: "Resources", icon: Article },
   { id: "forums", label: "Forum Boards", icon: ChatCircleText },
+  { id: "members", label: "Members", icon: UsersThree },
 ];
 
 function StatusBanner({ status, message }: { status: "success" | "error"; message: string }) {
@@ -443,6 +446,137 @@ function ForumsTab() {
   );
 }
 
+// ── Members Tab ───────────────────────────────────────────────────────────────
+
+const ALL_ROLES: Role[] = ["student_member", "society_admin", "finance_reviewer", "ukssc_staff", "alumni", "sponsor"];
+const ROLE_LABELS: Record<string, string> = {
+  student_member: "Student",
+  society_admin: "Society Admin",
+  ukssc_staff: "UKSSC Staff",
+  finance_reviewer: "Finance",
+  alumni: "Alumni",
+  sponsor: "Sponsor",
+  super_admin: "Super Admin",
+};
+
+function MembersTabAdmin() {
+  const [members, setMembers] = useState<MemberRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<Role | "">("");
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const { announce } = useApp();
+
+  useEffect(() => {
+    getAllProfilesAction()
+      .then(setMembers)
+      .catch(() => setMembers([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function changeRole(member: MemberRow, role: Role) {
+    setUpdatingId(member.id);
+    try {
+      await updateMemberRoleAction(member.id, role);
+      setMembers((prev) => prev.map((m) => m.id === member.id ? { ...m, role } : m));
+      announce(`${member.name} → ${ROLE_LABELS[role] ?? role}`);
+    } catch {
+      announce("Failed to update role.");
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
+  function exportCsv() {
+    const rows = [
+      ["Name", "Email", "Role", "Verified", "University", "Society", "Joined"],
+      ...displayed.map((m) => [
+        m.name, m.email, m.role, m.verified ? "Yes" : "No",
+        m.universityId ?? "", m.societyId ?? "",
+        m.joinedAt ? new Date(m.joinedAt).toLocaleDateString("en-GB") : "",
+      ]),
+    ];
+    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = "project-orchid-members.csv";
+    a.click();
+    announce("Member list exported.");
+  }
+
+  const q = search.toLowerCase();
+  const displayed = members.filter((m) => {
+    const matchesSearch = !q || m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q);
+    const matchesRole = !roleFilter || m.role === roleFilter;
+    return matchesSearch && matchesRole;
+  });
+
+  const verifiedCount = members.filter((m) => m.verified).length;
+
+  return (
+    <div style={{ display: "grid", gap: 20 }}>
+      <div className="stitch-card" style={{ padding: 24 }}>
+        <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 16 }}>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name or email…"
+            style={{ flex: 1, minWidth: 180, padding: "9px 12px", border: "1.5px solid var(--outline-variant, rgba(208,194,213,0.5))", borderRadius: 8, fontSize: 14, color: "var(--on-surface)", background: "var(--surface-bright, #fff)" }}
+          />
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value as Role | "")}
+            style={{ padding: "9px 12px", border: "1.5px solid var(--outline-variant, rgba(208,194,213,0.5))", borderRadius: 8, fontSize: 14, color: "var(--on-surface)", background: "var(--surface-bright, #fff)" }}
+          >
+            <option value="">All roles</option>
+            {ALL_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+          </select>
+          <button type="button" className="stitch-secondary" style={{ fontSize: 12, padding: "9px 14px" }} onClick={exportCsv}>
+            Export CSV
+          </button>
+        </div>
+
+        <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 12 }}>
+          {members.length} total · {verifiedCount} verified · showing {displayed.length}
+        </p>
+
+        {loading ? (
+          <p style={{ color: "var(--muted)", fontSize: 13 }}>Loading members…</p>
+        ) : displayed.length === 0 ? (
+          <p style={{ color: "var(--muted)", fontSize: 13 }}>No members match your filters.</p>
+        ) : (
+          <div style={{ display: "grid", gap: 8 }}>
+            {displayed.map((member) => (
+              <div key={member.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderRadius: 10, background: "var(--surface-container, #f8f4fa)" }}>
+                <div style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--primary-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "var(--primary)", flexShrink: 0 }}>
+                  {member.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--on-surface)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{member.name}</div>
+                  <div style={{ fontSize: 11, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{member.email}</div>
+                </div>
+                <select
+                  value={member.role}
+                  disabled={updatingId === member.id}
+                  onChange={(e) => changeRole(member, e.target.value as Role)}
+                  style={{ fontSize: 11, fontWeight: 700, padding: "4px 8px", borderRadius: 6, border: "1.5px solid var(--outline-variant, rgba(208,194,213,0.5))", background: "var(--surface-bright, #fff)", color: "var(--on-surface)", cursor: "pointer" }}
+                  aria-label={`Role for ${member.name}`}
+                >
+                  {ALL_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+                </select>
+                <span
+                  title={member.verified ? "Email verified" : "Not verified"}
+                  style={{ width: 8, height: 8, borderRadius: "50%", background: member.verified ? "var(--on-secondary-container)" : "var(--muted)", flexShrink: 0 }}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main View ─────────────────────────────────────────────────────────────────
 
 export function AdminDataView() {
@@ -508,6 +642,7 @@ export function AdminDataView() {
       {tab === "events" && <EventsTab />}
       {tab === "resources" && <ResourcesTab />}
       {tab === "forums" && <ForumsTab />}
+      {tab === "members" && <MembersTabAdmin />}
     </main>
   );
 }

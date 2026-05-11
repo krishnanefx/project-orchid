@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase-server";
-import type { ClaimStatus, ForumBoard, ForumThread, OrchidEvent, ReimbursementClaim, Resource, Society } from "@/lib/types";
+import type { ClaimStatus, EventRsvpRow, ForumBoard, ForumReply, ForumThread, MemberRow, OrchidEvent, ReimbursementClaim, Resource, Role, Society } from "@/lib/types";
 
 // ── Claims ───────────────────────────────────────────────────────────────────
 
@@ -369,4 +369,211 @@ export async function rsvpEventAction(
     await supabase.from("events").update({ rsvps: currentRsvps + 1 }).eq("id", eventId);
     return "added";
   }
+}
+
+// ── Forum Replies ─────────────────────────────────────────────────────────────
+
+export async function getForumRepliesAction(threadId: string): Promise<ForumReply[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("forum_replies")
+    .select("id, thread_id, body, author_id, created_at, profiles(full_name)")
+    .eq("thread_id", threadId)
+    .order("created_at", { ascending: true });
+  return (data ?? []).map((row) => {
+    const r = row as Record<string, unknown>;
+    const profile = r.profiles as Record<string, unknown> | null;
+    return {
+      id: r.id as string,
+      threadId: r.thread_id as string,
+      body: r.body as string,
+      authorId: r.author_id as string,
+      authorName: (profile?.full_name as string) ?? "Member",
+      createdAt: r.created_at as string,
+    };
+  });
+}
+
+export async function createForumReplyAction(input: {
+  threadId: string;
+  body: string;
+  authorId: string;
+}): Promise<ForumReply> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("forum_replies")
+    .insert({ thread_id: input.threadId, author_id: input.authorId, body: input.body })
+    .select("id, thread_id, body, author_id, created_at")
+    .single();
+  if (error) throw new Error(error.message);
+  // Bump thread's board reply counter
+  const { data: thread } = await supabase
+    .from("forum_threads")
+    .select("board_id")
+    .eq("id", input.threadId)
+    .single();
+  if (thread) {
+    const { data: board } = await supabase
+      .from("forum_boards")
+      .select("replies")
+      .eq("id", (thread as Record<string, unknown>).board_id as string)
+      .single();
+    const current = ((board as Record<string, unknown>)?.replies as number) ?? 0;
+    await supabase
+      .from("forum_boards")
+      .update({ replies: current + 1 })
+      .eq("id", (thread as Record<string, unknown>).board_id as string);
+  }
+  const r = data as Record<string, unknown>;
+  return {
+    id: r.id as string,
+    threadId: input.threadId,
+    body: input.body,
+    authorId: input.authorId,
+    authorName: "You",
+    createdAt: r.created_at as string,
+  };
+}
+
+// ── Members ───────────────────────────────────────────────────────────────────
+
+export async function getSocietyMembersAction(societyId: string): Promise<MemberRow[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("memberships")
+    .select("id, profile_id, membership_role, status, joined_at, profiles(id, full_name, email, role, university_id, course, study_year, verified, consent_status)")
+    .eq("society_id", societyId)
+    .eq("status", "active")
+    .order("joined_at", { ascending: false });
+  return (data ?? []).map((row) => {
+    const r = row as Record<string, unknown>;
+    const p = r.profiles as Record<string, unknown> | null;
+    return {
+      id: (p?.id as string) ?? (r.profile_id as string),
+      name: (p?.full_name as string) ?? "Member",
+      email: (p?.email as string) ?? "",
+      role: (p?.role as Role) ?? "student_member",
+      universityId: p?.university_id as string | undefined,
+      course: p?.course as string | undefined,
+      year: p?.study_year as string | undefined,
+      verified: (p?.verified as boolean) ?? false,
+      consentStatus: (p?.consent_status as "accepted" | "pending") ?? "pending",
+      joinedAt: r.joined_at as string | undefined,
+      membershipRole: r.membership_role as string | undefined,
+    };
+  });
+}
+
+export async function getAllProfilesAction(): Promise<MemberRow[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("profiles")
+    .select("id, full_name, email, role, university_id, society_id, course, study_year, verified, consent_status, created_at")
+    .order("created_at", { ascending: false });
+  return (data ?? []).map((row) => {
+    const r = row as Record<string, unknown>;
+    return {
+      id: r.id as string,
+      name: (r.full_name as string) ?? "Member",
+      email: (r.email as string) ?? "",
+      role: (r.role as Role) ?? "student_member",
+      universityId: r.university_id as string | undefined,
+      societyId: r.society_id as string | undefined,
+      course: r.course as string | undefined,
+      year: r.study_year as string | undefined,
+      verified: (r.verified as boolean) ?? false,
+      consentStatus: (r.consent_status as "accepted" | "pending") ?? "pending",
+      joinedAt: r.created_at as string | undefined,
+    };
+  });
+}
+
+export async function updateMemberRoleAction(profileId: string, role: Role): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ role })
+    .eq("id", profileId);
+  if (error) throw new Error(error.message);
+}
+
+// ── Event check-in ────────────────────────────────────────────────────────────
+
+export async function getEventRsvpsAction(eventId: string): Promise<EventRsvpRow[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("event_rsvps")
+    .select("id, event_id, profile_id, status, checked_in_at, profiles(full_name)")
+    .eq("event_id", eventId)
+    .order("created_at", { ascending: true });
+  return (data ?? []).map((row) => {
+    const r = row as Record<string, unknown>;
+    const p = r.profiles as Record<string, unknown> | null;
+    return {
+      id: r.id as string,
+      eventId: r.event_id as string,
+      profileId: r.profile_id as string,
+      profileName: (p?.full_name as string) ?? "Member",
+      status: (r.status as string) ?? "confirmed",
+      checkedInAt: (r.checked_in_at as string) ?? null,
+    };
+  });
+}
+
+export async function checkInAction(rsvpId: string, eventId: string): Promise<void> {
+  const supabase = await createClient();
+  const now = new Date().toISOString();
+  const { error: rsvpErr } = await supabase
+    .from("event_rsvps")
+    .update({ checked_in_at: now, status: "checked_in" })
+    .eq("id", rsvpId);
+  if (rsvpErr) throw new Error(rsvpErr.message);
+  // Bump event checked_in counter
+  const { data: ev } = await supabase.from("events").select("checked_in").eq("id", eventId).single();
+  const current = ((ev as Record<string, unknown>)?.checked_in as number) ?? 0;
+  await supabase.from("events").update({ checked_in: current + 1 }).eq("id", eventId);
+}
+
+// ── Receipt upload ────────────────────────────────────────────────────────────
+
+export async function uploadReceiptAction(formData: FormData): Promise<string> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const file = formData.get("file") as File;
+  const claimId = formData.get("claimId") as string;
+  if (!file || file.size === 0) throw new Error("No file provided");
+
+  const ext = file.name.split(".").pop() ?? "bin";
+  const path = `${user.id}/${claimId ?? Date.now()}.${ext}`;
+
+  const { error } = await supabase.storage.from("receipts").upload(path, file, { upsert: true });
+  if (error) throw new Error(error.message);
+
+  // Store path on the claim
+  if (claimId) {
+    await supabase.from("reimbursement_claims").update({ receipt_path: path, receipt_name: file.name }).eq("id", claimId);
+  }
+
+  return path;
+}
+
+export async function getReceiptUrlAction(path: string): Promise<string> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage
+    .from("receipts")
+    .createSignedUrl(path, 3600);
+  if (error) throw new Error(error.message);
+  return data.signedUrl;
+}
+
+// ── Password reset ─────────────────────────────────────────────────────────────
+
+export async function sendPasswordResetAction(email: string): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/api/auth/callback?next=/dashboard`,
+  });
+  if (error) throw new Error(error.message);
 }

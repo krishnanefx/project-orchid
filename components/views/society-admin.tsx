@@ -16,11 +16,18 @@ import {
   Warning,
   X
 } from "@phosphor-icons/react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/lib/app-context";
-import { createEventAction, updateSocietyAction } from "@/lib/actions";
+import {
+  checkInAction,
+  createEventAction,
+  getEventRsvpsAction,
+  getSocietyMembersAction,
+  updateMemberRoleAction,
+  updateSocietyAction,
+} from "@/lib/actions";
 import { universities } from "@/lib/data";
-import type { EventDraft, OrchidEvent } from "@/lib/types";
+import type { EventDraft, EventRsvpRow, MemberRow, OrchidEvent, Role } from "@/lib/types";
 
 type Tab = "profile" | "events" | "members" | "media";
 
@@ -453,6 +460,18 @@ function EventsTab({
     capacity: 50
   });
   const [editId, setEditId] = useState<string | null>(null);
+  const [checkInEventId, setCheckInEventId] = useState<string | null>(null);
+  const [rsvps, setRsvps] = useState<EventRsvpRow[]>([]);
+  const [loadingRsvps, setLoadingRsvps] = useState(false);
+
+  useEffect(() => {
+    if (!checkInEventId) { setRsvps([]); return; }
+    setLoadingRsvps(true);
+    getEventRsvpsAction(checkInEventId)
+      .then(setRsvps)
+      .catch(() => setRsvps([]))
+      .finally(() => setLoadingRsvps(false));
+  }, [checkInEventId]);
 
   async function handleSave() {
     if (!draft.title.trim() || !draft.startsAt || !draft.location.trim()) {
@@ -569,7 +588,8 @@ function EventsTab({
             const day = date.toLocaleDateString("en-GB", { day: "numeric", timeZone: "UTC" });
             const statusColors = EVENT_STATUS_COLORS[event.status] ?? EVENT_STATUS_COLORS.closed;
             return (
-              <div key={event.id} className="stitch-card" style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: 16 }}>
+              <div key={event.id}>
+              <div className="stitch-card" style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: 16 }}>
                 <div style={{ textAlign: "center", minWidth: 44, flexShrink: 0 }}>
                   <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "var(--primary)", letterSpacing: "0.04em" }}>{month}</div>
                   <div style={{ fontSize: 22, fontWeight: 800, color: "var(--on-surface)", lineHeight: 1.1 }}>{day}</div>
@@ -585,6 +605,9 @@ function EventsTab({
                 </span>
                 {isCommittee && (
                   <div style={{ display: "flex", gap: 8 }}>
+                    <button type="button" onClick={() => setCheckInEventId(checkInEventId === event.id ? null : event.id)} style={{ border: 0, background: checkInEventId === event.id ? "var(--primary-soft)" : "none", cursor: "pointer", color: "var(--primary)", padding: "6px 10px", borderRadius: 6, display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700 }}>
+                      <CheckCircle size={14} /> Check-in
+                    </button>
                     <button type="button" onClick={() => handleEdit(event)} style={{ border: 0, background: "none", cursor: "pointer", color: "var(--primary)", padding: 6, borderRadius: 6, display: "flex" }}>
                       <PencilSimple size={15} />
                     </button>
@@ -594,6 +617,55 @@ function EventsTab({
                   </div>
                 )}
               </div>
+
+              {/* Check-in panel */}
+              {checkInEventId === event.id && (
+                <div style={{ borderTop: "1px solid var(--outline-variant, rgba(208,194,213,0.3))", marginTop: 12, paddingTop: 12 }}>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: "var(--on-surface)", marginBottom: 10 }}>
+                    RSVPs — {rsvps.filter((r) => r.checkedInAt).length}/{rsvps.length} checked in
+                  </p>
+                  {loadingRsvps ? (
+                    <p style={{ fontSize: 12, color: "var(--muted)" }}>Loading RSVPs…</p>
+                  ) : rsvps.length === 0 ? (
+                    <p style={{ fontSize: 12, color: "var(--muted)" }}>No RSVPs yet.</p>
+                  ) : (
+                    <div style={{ display: "grid", gap: 6 }}>
+                      {rsvps.map((rsvp) => {
+                        const checked = !!rsvp.checkedInAt;
+                        return (
+                          <div key={rsvp.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 8, background: checked ? "var(--secondary-container)" : "var(--surface-container, #faf7fb)" }}>
+                            <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--primary-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "var(--primary)", flexShrink: 0 }}>
+                              {rsvp.profileName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                            </div>
+                            <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "var(--on-surface)" }}>{rsvp.profileName}</span>
+                            {checked ? (
+                              <span style={{ fontSize: 11, color: "var(--on-secondary-container)", fontWeight: 700, display: "flex", alignItems: "center", gap: 4 }}>
+                                <CheckCircle size={13} weight="fill" /> {new Date(rsvp.checkedInAt!).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 6, border: "1.5px solid var(--primary)", background: "none", color: "var(--primary)", cursor: "pointer" }}
+                                onClick={async () => {
+                                  await checkInAction(rsvp.id, event.id);
+                                  const now = new Date().toISOString();
+                                  setRsvps((prev) => prev.map((r) => r.id === rsvp.id ? { ...r, checkedInAt: now } : r));
+                                  setLocalEvents((prev) => prev.map((e) => e.id === event.id ? { ...e, checkedIn: e.checkedIn + 1 } : e));
+                                  setAllEvents(allEvents.map((e) => e.id === event.id ? { ...e, checkedIn: e.checkedIn + 1 } : e));
+                                  announce(`${rsvp.profileName} checked in.`);
+                                }}
+                              >
+                                Check in
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
             );
           })}
         </div>
@@ -603,6 +675,16 @@ function EventsTab({
 }
 
 // ── Members Tab ──────────────────────────────────────────────────────────────
+
+const ROLE_LABELS: Record<string, string> = {
+  student_member: "Student",
+  society_admin: "Society Admin",
+  ukssc_staff: "UKSSC Staff",
+  finance_reviewer: "Finance",
+  alumni: "Alumni",
+  sponsor: "Sponsor",
+  super_admin: "Super Admin",
+};
 
 function MembersTab({
   society,
@@ -614,21 +696,55 @@ function MembersTab({
   announce: (msg: string) => void;
 }) {
   const [filter, setFilter] = useState<"all" | "committee" | "members">("all");
-  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [members, setMembers] = useState<MemberRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [updatingRole, setUpdatingRole] = useState<string | null>(null);
 
-  const committeeRows = society.committee.map((entry: string, i: number) => {
-    const parts = entry.split("|");
-    return {
-      id: `committee-${i}`,
-      name: parts[0].trim(),
-      role: parts[1]?.trim() ?? "Committee",
-      badge: "committee" as const,
-    };
-  });
+  useEffect(() => {
+    setLoading(true);
+    getSocietyMembersAction(society.id)
+      .then(setMembers)
+      .catch(() => setMembers([]))
+      .finally(() => setLoading(false));
+  }, [society.id]);
 
-  const memberCount = society.members - society.committee.length;
+  function exportCsv() {
+    const rows = [
+      ["Name", "Email", "Role", "Verified", "Course", "Year", "Joined"],
+      ...members.map((m) => [
+        m.name, m.email, m.role, m.verified ? "Yes" : "No",
+        m.course ?? "", m.year ?? "",
+        m.joinedAt ? new Date(m.joinedAt).toLocaleDateString("en-GB") : "",
+      ]),
+    ];
+    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = `${society.name.replace(/\s+/g, "-")}-members.csv`;
+    a.click();
+    announce("Member list exported.");
+  }
 
-  const displayed = filter === "committee" ? committeeRows : filter === "members" ? [] : committeeRows;
+  async function changeRole(member: MemberRow, role: Role) {
+    setUpdatingRole(member.id);
+    try {
+      await updateMemberRoleAction(member.id, role);
+      setMembers((prev) => prev.map((m) => m.id === member.id ? { ...m, role } : m));
+      announce(`${member.name}'s role updated to ${ROLE_LABELS[role] ?? role}.`);
+    } catch {
+      announce("Failed to update role.");
+    } finally {
+      setUpdatingRole(null);
+    }
+  }
+
+  const committeeNames = new Set(
+    society.committee.map((e: string) => e.split("|")[0].trim().toLowerCase())
+  );
+  const committeeMembers = members.filter((m) => committeeNames.has(m.name.toLowerCase()) || m.role === "society_admin");
+  const regularMembers = members.filter((m) => !committeeNames.has(m.name.toLowerCase()) && m.role !== "society_admin");
+
+  const displayed = filter === "committee" ? committeeMembers : filter === "members" ? regularMembers : members;
 
   return (
     <div>
@@ -649,71 +765,68 @@ function MembersTab({
                 fontSize: 12,
                 fontWeight: 700,
                 cursor: "pointer",
-                textTransform: "capitalize"
+                textTransform: "capitalize",
               }}
             >
-              {f === "all" ? "All" : f === "committee" ? "Committee" : "Members"}
+              {f === "all" ? `All (${members.length})` : f === "committee" ? `Committee (${committeeMembers.length})` : `Members (${regularMembers.length})`}
             </button>
           ))}
         </div>
-        <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
-          {society.committee.length} committee &middot; {memberCount} verified members
-        </p>
-      </div>
-
-      <div style={{ display: "grid", gap: 10 }}>
-        {displayed.map((row) => (
-          <div key={row.id} className="stitch-card" style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: "50%", background: "var(--primary-soft)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 12, fontWeight: 700, color: "var(--primary)", flexShrink: 0
-            }}>
-              {row.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)" }}>{row.name}</div>
-              <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>{row.role}</div>
-            </div>
-            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "3px 10px", borderRadius: 999, background: "var(--secondary-container)", color: "var(--on-secondary-container)" }}>
-              Committee
-            </span>
-            {isCommittee && (
-              <button
-                type="button"
-                style={{ border: 0, background: "none", cursor: "pointer", color: "var(--muted)", padding: 6, borderRadius: 6, display: "flex" }}
-                onClick={() => announce(`Resent verification to ${row.name}.`)}
-              >
-                <User size={15} />
-              </button>
-            )}
-          </div>
-        ))}
-
-        {(filter === "all" || filter === "members") && memberCount > 0 && (
-          <div className="stitch-card" style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: 12, background: "var(--surface-container, #faf7fb)" }}>
-            <UsersThree size={20} style={{ color: "var(--muted)" }} />
-            <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
-              {memberCount} additional verified members — full member management coming with the Supabase data layer.
-            </p>
-          </div>
+        {isCommittee && (
+          <button type="button" className="stitch-secondary" style={{ fontSize: 12, padding: "6px 14px" }} onClick={exportCsv}>
+            Export CSV
+          </button>
         )}
       </div>
 
-      {isCommittee && (
-        <div className="stitch-card" style={{ padding: 20, marginTop: 16 }}>
-          <h4 style={{ fontSize: 13, fontWeight: 700, color: "var(--on-surface)", marginBottom: 12 }}>Admin Actions</h4>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-            <button type="button" className="stitch-secondary" onClick={() => announce("Invite link copied to clipboard.")}>
-              <Plus size={14} /> Invite Member
-            </button>
-            <button type="button" className="stitch-secondary" onClick={() => announce("Member export sent to your email.")}>
-              Export Member List (CSV)
-            </button>
-            <button type="button" className="stitch-secondary" onClick={() => announce("Bulk verification email sent.")}>
-              Send Verification Reminder
-            </button>
-          </div>
+      {loading ? (
+        <p style={{ color: "var(--muted)", fontSize: 13, padding: "12px 0" }}>Loading members…</p>
+      ) : displayed.length === 0 ? (
+        <p style={{ color: "var(--muted)", fontSize: 13, padding: "12px 0" }}>
+          {filter === "all" ? "No members yet — share the society's join link." : `No ${filter} members yet.`}
+        </p>
+      ) : (
+        <div style={{ display: "grid", gap: 10 }}>
+          {displayed.map((row) => (
+            <div key={row.id} className="stitch-card" style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: "50%", background: "var(--primary-soft)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 12, fontWeight: 700, color: "var(--primary)", flexShrink: 0,
+              }}>
+                {row.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.name}</div>
+                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>
+                  {row.email}
+                  {row.course && ` · ${row.course}`}
+                  {row.year && ` · ${row.year}`}
+                </div>
+              </div>
+              {isCommittee ? (
+                <select
+                  value={row.role}
+                  disabled={updatingRole === row.id}
+                  onChange={(e) => changeRole(row, e.target.value as Role)}
+                  style={{ fontSize: 11, fontWeight: 700, padding: "4px 8px", borderRadius: 6, border: "1.5px solid var(--outline-variant, rgba(208,194,213,0.5))", background: "var(--surface-bright, #fff)", color: "var(--on-surface)", cursor: "pointer" }}
+                  aria-label={`Change role for ${row.name}`}
+                >
+                  {(["student_member", "society_admin", "alumni"] as Role[]).map((r) => (
+                    <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+                  ))}
+                </select>
+              ) : (
+                <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "3px 10px", borderRadius: 999, background: "var(--secondary-container)", color: "var(--on-secondary-container)", flexShrink: 0 }}>
+                  {ROLE_LABELS[row.role] ?? row.role}
+                </span>
+              )}
+              <span
+                title={row.verified ? "Verified" : "Unverified"}
+                style={{ width: 8, height: 8, borderRadius: "50%", background: row.verified ? "var(--on-secondary-container)" : "var(--muted)", flexShrink: 0 }}
+              />
+            </div>
+          ))}
         </div>
       )}
     </div>
