@@ -1,11 +1,12 @@
 "use client";
 
-import { FloppyDisk, LockKey, User } from "@phosphor-icons/react";
-import { useState } from "react";
+import { FloppyDisk, LockKey, Moon, Sun, User } from "@phosphor-icons/react";
+import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useApp } from "@/lib/app-context";
 import { updateProfileAction } from "@/lib/actions";
 import { universities } from "@/lib/data";
+import { applyTheme, getStoredTheme, type Theme } from "@/lib/theme";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -45,6 +46,16 @@ export function SettingsView() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [pwStatus, setPwStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [pwError, setPwError] = useState("");
+  const [theme, setTheme] = useState<Theme>("light");
+
+  useEffect(() => {
+    setTheme(getStoredTheme());
+  }, []);
+
+  function handleThemeToggle(next: Theme) {
+    setTheme(next);
+    applyTheme(next);
+  }
 
   const university = universities.find((u) => u.id === currentUser.universityId);
   const mySociety = localSocieties.find((s) => s.id === currentUser.societyId);
@@ -264,6 +275,53 @@ export function SettingsView() {
               <><FloppyDisk size={15} /> Save Profile</>
             )}
           </button>
+        </div>
+
+        {/* Appearance */}
+        <div className="stitch-card" style={{ padding: 24, marginBottom: 16 }}>
+          <h3 style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--on-surface)", marginBottom: 16 }}>
+            Appearance
+          </h3>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)", marginBottom: 2 }}>Theme</div>
+              <div style={{ fontSize: 12, color: "var(--muted)" }}>Choose light or dark mode</div>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => handleThemeToggle("light")}
+                style={{
+                  display: "flex", alignItems: "center", gap: 6, padding: "8px 16px",
+                  borderRadius: 8, border: "1.5px solid",
+                  borderColor: theme === "light" ? "var(--primary)" : "var(--outline-variant, rgba(208,194,213,0.5))",
+                  background: theme === "light" ? "var(--primary-soft)" : "none",
+                  color: theme === "light" ? "var(--primary)" : "var(--muted)",
+                  fontWeight: theme === "light" ? 700 : 500,
+                  fontSize: 13, cursor: "pointer",
+                }}
+              >
+                <Sun size={15} weight={theme === "light" ? "fill" : "regular"} />
+                Light
+              </button>
+              <button
+                type="button"
+                onClick={() => handleThemeToggle("dark")}
+                style={{
+                  display: "flex", alignItems: "center", gap: 6, padding: "8px 16px",
+                  borderRadius: 8, border: "1.5px solid",
+                  borderColor: theme === "dark" ? "var(--primary)" : "var(--outline-variant, rgba(208,194,213,0.5))",
+                  background: theme === "dark" ? "var(--primary-soft)" : "none",
+                  color: theme === "dark" ? "var(--primary)" : "var(--muted)",
+                  fontWeight: theme === "dark" ? 700 : 500,
+                  fontSize: 13, cursor: "pointer",
+                }}
+              >
+                <Moon size={15} weight={theme === "dark" ? "fill" : "regular"} />
+                Dark
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Password change — only shown when Supabase is configured */}
