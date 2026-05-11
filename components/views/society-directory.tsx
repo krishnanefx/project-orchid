@@ -95,11 +95,31 @@ export function SocietyDirectory() {
             const isMySociety = currentUser.societyId === society.id;
             return (
               <article className="stitch-card small-society" key={society.id}>
-                <div className="letter-logo">{society.logo}</div>
-                <h4>{society.name}</h4>
-                <p>{university?.name ?? ""}</p>
-                <span className="region-pill">{university?.city ?? ""}</span>
-                <div className="meta-row compact" style={{ marginTop: 6 }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 8 }}>
+                  <div className="letter-logo" style={{ flexShrink: 0 }}>{society.logo}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <h4 style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{society.name}</h4>
+                    <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>{university?.name ?? ""}</p>
+                  </div>
+                  {isMySociety && (
+                    <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", padding: "2px 7px", borderRadius: 999, background: "var(--primary-soft)", color: "var(--primary)", flexShrink: 0 }}>Mine</span>
+                  )}
+                </div>
+                {society.description && (
+                  <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 8px", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                    {society.description}
+                  </p>
+                )}
+                {(society.tags ?? []).length > 0 && (
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 8 }}>
+                    {(society.tags ?? []).slice(0, 3).map((tag) => (
+                      <span key={tag} style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", padding: "2px 7px", borderRadius: 999, background: "var(--surface-container)", color: "var(--muted)" }}>
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="meta-row compact" style={{ marginTop: "auto" }}>
                   <span><UsersThree size={13} /> {society.members}</span>
                   {university && <span><MapPin size={13} /> {university.city}</span>}
                 </div>
