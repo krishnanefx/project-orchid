@@ -10,11 +10,15 @@ import {
   GearSix,
   House,
   IdentificationCard,
+  Moon,
   SignOut,
+  Sun,
   UsersThree
 } from "@phosphor-icons/react";
+import { useEffect, useState } from "react";
 import { useApp, type View } from "@/lib/app-context";
 import type { Role } from "@/lib/types";
+import { applyTheme, getStoredTheme, type Theme } from "@/lib/theme";
 
 const navItems: { id: View; label: string; icon: React.ComponentType<{ size?: number; weight?: "regular" | "fill" | "bold" }> }[] = [
   { id: "dashboard", label: "Dashboard", icon: House },
@@ -57,6 +61,17 @@ const PREVIEW_ROLES: { role: Role; label: string }[] = [
 
 export function Sidebar() {
   const { view, setView, currentUser, viewAs, setViewAs, can, localClaims, claimStatuses, localEvents, rsvpdEventIds } = useApp();
+  const [theme, setTheme] = useState<Theme>("light");
+
+  useEffect(() => {
+    setTheme(getStoredTheme());
+  }, []);
+
+  function handleThemeToggle() {
+    const next: Theme = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    applyTheme(next);
+  }
 
   const visibleNavItems = navItems.filter((item) => {
     const feature = NAV_FEATURE_MAP[item.id];
@@ -185,6 +200,15 @@ export function Sidebar() {
           </div>
         )}
         <button className="stitch-nav-item" type="button" onClick={() => setView("settings")}><GearSix size={17} /> Settings</button>
+        <button
+          className="stitch-nav-item"
+          type="button"
+          onClick={handleThemeToggle}
+          aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+        >
+          {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
+          {theme === "dark" ? "Light Mode" : "Dark Mode"}
+        </button>
         <form action="/api/auth/signout" method="POST" style={{ width: "100%" }}>
           <button className="stitch-nav-item" type="submit" style={{ width: "100%" }}><SignOut size={17} /> Logout</button>
         </form>

@@ -1,7 +1,8 @@
 "use client";
 
-import { Suspense, lazy, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { AppProvider, useApp } from "@/lib/app-context";
+import { applyTheme, getStoredTheme } from "@/lib/theme";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/topbar";
@@ -161,6 +162,10 @@ export function OrchidApp({
   initialResources,
   initialRsvpIds,
 }: OrchidAppProps) {
+  useEffect(() => {
+    applyTheme(getStoredTheme());
+  }, []);
+
   return (
     <AppProvider
       initialUser={initialUser}
