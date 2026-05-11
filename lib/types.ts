@@ -46,6 +46,7 @@ export type EventDraft = {
   startsAt: string;
   location: string;
   capacity: number;
+  description?: string;
 };
 
 export type AdminQueueItem = {
