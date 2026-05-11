@@ -270,6 +270,14 @@ export async function createForumBoardAction(input: {
   };
 }
 
+export async function updateForumBoardAction(id: string, patch: { pinned?: string; locked?: boolean }): Promise<void> {
+  const supabase = await createClient();
+  const update: Record<string, unknown> = {};
+  if (patch.pinned !== undefined) update.pinned = patch.pinned;
+  if (patch.locked !== undefined) update.locked = patch.locked;
+  await supabase.from("forum_boards").update(update).eq("id", id);
+}
+
 // ── Forum Threads ─────────────────────────────────────────────────────────────
 
 export async function getForumThreadsAction(boardId: string): Promise<ForumThread[]> {

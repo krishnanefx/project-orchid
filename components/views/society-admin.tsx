@@ -13,6 +13,7 @@ import {
   Lock,
   PencilSimple,
   Plus,
+  PushPin,
   Trash,
   User,
   UsersThree,
@@ -21,7 +22,7 @@ import {
 } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/lib/app-context";
-import { checkInAction, createEventAction, createForumBoardAction, getEventRsvpsAction, getSocietyMembersAction, updateEventStatusAction, updateSocietyAction } from "@/lib/actions";
+import { checkInAction, createEventAction, createForumBoardAction, getEventRsvpsAction, getSocietyMembersAction, updateEventStatusAction, updateForumBoardAction, updateSocietyAction } from "@/lib/actions";
 import { downloadCsv } from "@/lib/utils";
 import { universities } from "@/lib/data";
 import type { EventDraft, ForumBoard, OrchidEvent } from "@/lib/types";
@@ -1036,6 +1037,8 @@ function ForumsTab({
   const [boardName, setBoardName] = useState("");
   const [visibility, setVisibility] = useState<ForumBoard["visibility"]>("membership_restricted");
   const [creating, setCreating] = useState(false);
+  const [editingPinId, setEditingPinId] = useState<string | null>(null);
+  const [pinDraft, setPinDraft] = useState("");
 
   const societyBoards = localForums.filter((b) => b.societyId === societyId);
 
@@ -1065,6 +1068,19 @@ function ForumsTab({
       announce("Board created locally but failed to sync — please refresh.");
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function handleSavePin(boardId: string) {
+    const msg = pinDraft.trim();
+    setLocalForums(localForums.map((b) => b.id === boardId ? { ...b, pinned: msg } : b));
+    setEditingPinId(null);
+    setPinDraft("");
+    announce(msg ? "Pinned announcement saved." : "Pinned announcement cleared.");
+    try {
+      await updateForumBoardAction(boardId, { pinned: msg });
+    } catch {
+      announce("Saved locally but failed to sync.");
     }
   }
 
@@ -1128,30 +1144,82 @@ function ForumsTab({
       ) : (
         <div style={{ display: "grid", gap: 10 }}>
           {societyBoards.map((board) => (
-            <div key={board.id} className="stitch-card" style={{ padding: "14px 20px", display: "flex", alignItems: "center", gap: 14 }}>
-              <div style={{
-                width: 38, height: 38, borderRadius: 10, background: "var(--primary-soft)",
-                display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0
-              }}>
-                {board.locked ? <Lock size={16} style={{ color: "var(--primary)" }} /> : <ChatCircleText size={16} style={{ color: "var(--primary)" }} />}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)" }}>{board.name}</div>
-                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
-                  {board.threads} thread{board.threads !== 1 ? "s" : ""} &middot; {board.replies} repl{board.replies !== 1 ? "ies" : "y"}
+            <div key={board.id} className="stitch-card" style={{ padding: "14px 20px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <div style={{
+                  width: 38, height: 38, borderRadius: 10, background: "var(--primary-soft)",
+                  display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0
+                }}>
+                  {board.locked ? <Lock size={16} style={{ color: "var(--primary)" }} /> : <ChatCircleText size={16} style={{ color: "var(--primary)" }} />}
                 </div>
-              </div>
-              <span style={{
-                fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "3px 10px", borderRadius: 999,
-                background: board.visibility === "membership_restricted" ? "var(--secondary-container)" : "var(--primary-soft)",
-                color: board.visibility === "membership_restricted" ? "var(--on-secondary-container)" : "var(--primary)"
-              }}>
-                {board.visibility === "membership_restricted" ? "Members only" : "Open"}
-              </span>
-              {board.locked && (
-                <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "3px 10px", borderRadius: 999, background: "var(--surface-container)", color: "var(--muted)" }}>
-                  Locked
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)" }}>{board.name}</div>
+                  <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
+                    {board.threads} thread{board.threads !== 1 ? "s" : ""} &middot; {board.replies} repl{board.replies !== 1 ? "ies" : "y"}
+                  </div>
+                </div>
+                <span style={{
+                  fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "3px 10px", borderRadius: 999,
+                  background: board.visibility === "membership_restricted" ? "var(--secondary-container)" : "var(--primary-soft)",
+                  color: board.visibility === "membership_restricted" ? "var(--on-secondary-container)" : "var(--primary)"
+                }}>
+                  {board.visibility === "membership_restricted" ? "Members only" : "Open"}
                 </span>
+                {board.locked && (
+                  <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "3px 10px", borderRadius: 999, background: "var(--surface-container)", color: "var(--muted)" }}>
+                    Locked
+                  </span>
+                )}
+                {isCommittee && (
+                  <button
+                    type="button"
+                    title={board.pinned ? "Edit pinned announcement" : "Add pinned announcement"}
+                    onClick={() => { setEditingPinId(board.id); setPinDraft(board.pinned ?? ""); }}
+                    style={{
+                      background: board.pinned ? "var(--primary-soft)" : "none",
+                      border: "1px solid " + (board.pinned ? "var(--primary)" : "rgba(208,194,213,0.4)"),
+                      borderRadius: 6, padding: "4px 8px", cursor: "pointer",
+                      display: "flex", alignItems: "center", gap: 4,
+                      fontSize: 11, fontWeight: 600,
+                      color: board.pinned ? "var(--primary)" : "var(--muted)",
+                    }}
+                  >
+                    <PushPin size={12} weight={board.pinned ? "fill" : "regular"} />
+                    {board.pinned ? "Pinned" : "Pin"}
+                  </button>
+                )}
+              </div>
+
+              {editingPinId === board.id && (
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--outline-variant)" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--muted)", marginBottom: 8 }}>
+                    Pinned Announcement
+                  </div>
+                  <textarea
+                    value={pinDraft}
+                    onChange={(e) => setPinDraft(e.target.value)}
+                    placeholder="e.g. Welcome! Please read the pinned rules before posting."
+                    rows={2}
+                    style={{ ...inputStyle, resize: "vertical", width: "100%", fontFamily: "inherit" }}
+                    autoFocus
+                  />
+                  <div style={{ display: "flex", gap: 8, marginTop: 8, justifyContent: "flex-end" }}>
+                    <button type="button" className="stitch-secondary" onClick={() => setEditingPinId(null)}>Cancel</button>
+                    <button type="button" className="stitch-primary" onClick={() => handleSavePin(board.id)}>
+                      <FloppyDisk size={13} /> Save
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {!editingPinId && board.pinned && (
+                <div style={{
+                  marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--outline-variant)",
+                  display: "flex", alignItems: "flex-start", gap: 8,
+                }}>
+                  <PushPin size={12} weight="fill" style={{ color: "var(--primary)", flexShrink: 0, marginTop: 2 }} />
+                  <p style={{ fontSize: 12, color: "var(--on-surface)", margin: 0, lineHeight: 1.5, flex: 1 }}>{board.pinned}</p>
+                </div>
               )}
             </div>
           ))}
