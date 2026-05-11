@@ -1,5 +1,6 @@
 "use client";
 
+import { MagnifyingGlass } from "@phosphor-icons/react";
 import { useState } from "react";
 import { useApp } from "@/lib/app-context";
 import { PageHeader } from "@/components/ui/primitives";
@@ -87,27 +88,58 @@ function ResourceCard({ resource }: { resource: Resource }) {
 export function ResourcesView() {
   const { localResources } = useApp();
   const [category, setCategory] = useState("All");
-  const filtered = category === "All"
-    ? localResources
-    : localResources.filter((r) => r.category.toLowerCase() === category.toLowerCase());
+  const [search, setSearch] = useState("");
+
+  const q = search.toLowerCase();
+  const filtered = localResources.filter((r) => {
+    const matchCat = category === "All" || r.category.toLowerCase() === category.toLowerCase();
+    const matchSearch = !q || r.title.toLowerCase().includes(q) || r.body?.toLowerCase().includes(q) || r.audience.toLowerCase().includes(q);
+    return matchCat && matchSearch;
+  });
 
   return (
     <main className="stitch-main">
       <PageHeader title="Resource Library" copy="Guides, articles and UKSSC announcements for students and committees." />
-      <div className="category-row">
-        {CATEGORIES.map((item) => (
-          <button key={item} className={category === item ? "active" : ""} onClick={() => setCategory(item)} type="button">
-            {item}
-          </button>
-        ))}
+      <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
+        <div className="category-row" style={{ marginBottom: 0, flex: "0 0 auto" }}>
+          {CATEGORIES.map((item) => (
+            <button key={item} className={category === item ? "active" : ""} onClick={() => setCategory(item)} type="button">
+              {item}
+            </button>
+          ))}
+        </div>
+        <div style={{ position: "relative", flex: "1 1 180px" }}>
+          <MagnifyingGlass size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--muted)", pointerEvents: "none" }} />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search resources…"
+            aria-label="Search resources"
+            style={{
+              width: "100%",
+              padding: "8px 12px 8px 30px",
+              border: "1.5px solid var(--outline-variant, rgba(208,194,213,0.5))",
+              borderRadius: 8,
+              fontSize: 13,
+              color: "var(--on-surface)",
+              background: "var(--surface-bright, #fff)",
+              outline: "none",
+              boxSizing: "border-box",
+            }}
+          />
+        </div>
       </div>
       <section className="resource-grid">
         {filtered.length > 0 ? (
           filtered.map((resource) => <ResourceCard key={resource.id} resource={resource} />)
         ) : (
           <article className="stitch-card resource-card">
-            <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontWeight: 700, fontSize: 15 }}>No resources yet</h3>
-            <p style={{ color: "var(--muted)", fontSize: 13 }}>UKSSC staff can publish resources from Admin → Manage Data.</p>
+            <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontWeight: 700, fontSize: 15 }}>
+              {search ? `No results for "${search}"` : "No resources yet"}
+            </h3>
+            <p style={{ color: "var(--muted)", fontSize: 13 }}>
+              {search ? "Try a different search term or clear the filter." : "UKSSC staff can publish resources from Admin → Manage Data."}
+            </p>
           </article>
         )}
       </section>

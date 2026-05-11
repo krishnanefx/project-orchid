@@ -57,7 +57,7 @@ export function DashboardView() {
         title={`Welcome back, ${firstName}!`}
         copy="Here's what's happening in your UKSSC network."
         action="New Post"
-        onAction={() => announce("Open the Forums tab to publish a new verified community post.")}
+        onAction={() => setView("forums")}
       />
       {/* Onboarding nudge for new users */}
       {!currentUser.societyId && localSocieties.length > 0 && (
@@ -182,7 +182,7 @@ export function DashboardView() {
               className="stitch-secondary-muted"
               style={{ marginTop: "auto", alignSelf: "flex-start" }}
               type="button"
-              onClick={() => announce(`Check the Events tab for ${nextEvents[0].title}.`)}
+              onClick={() => setView("events")}
             >
               View details →
             </button>
@@ -199,7 +199,7 @@ export function DashboardView() {
         <article className="stitch-card bento-wide">
           <div className="section-row">
             <h3><ChatCircleText size={20} weight="fill" /> Community Boards</h3>
-            <button type="button" onClick={() => announce("Open the Forums tab to browse all boards.")}>View All</button>
+            <button type="button" onClick={() => setView("forums")}>View All</button>
           </div>
           {forumItems.length > 0 ? (
             forumItems.slice(0, 3).map((item) => (
