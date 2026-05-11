@@ -1,10 +1,11 @@
 "use client";
 
-import { CalendarBlank, CaretDown, CaretUp, List, MagnifyingGlass, MapPin, UsersThree } from "@phosphor-icons/react";
+import { CalendarBlank, CaretDown, CaretUp, List, MagnifyingGlass, MapPin, QrCode, UsersThree } from "@phosphor-icons/react";
 import { useState } from "react";
 import { useApp } from "@/lib/app-context";
 import { rsvpEventAction } from "@/lib/actions";
 import { PageHeader } from "@/components/ui/primitives";
+import { TicketModal } from "@/components/ui/ticket-modal";
 import type { OrchidEvent } from "@/lib/types";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -35,7 +36,7 @@ function formatTime(startsAt: string) {
   return new Date(startsAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
 }
 
-function EventRow({ event, onRsvp, rsvpd }: { event: OrchidEvent; onRsvp: () => void; rsvpd: boolean }) {
+function EventRow({ event, onRsvp, onTicket, rsvpd }: { event: OrchidEvent; onRsvp: () => void; onTicket: () => void; rsvpd: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const typeStyle = TYPE_COLORS[event.type] ?? TYPE_COLORS.ukssc;
   const statusStyle = STATUS_COLORS[event.status] ?? STATUS_COLORS.closed;
@@ -92,6 +93,17 @@ function EventRow({ event, onRsvp, rsvpd }: { event: OrchidEvent; onRsvp: () => 
               {expanded ? <CaretUp size={15} /> : <CaretDown size={15} />}
             </button>
           )}
+          {rsvpd && (
+            <button
+              type="button"
+              onClick={onTicket}
+              title="View entry ticket"
+              aria-label="View event ticket"
+              style={{ border: 0, background: "var(--primary-soft)", cursor: "pointer", color: "var(--primary)", padding: 6, borderRadius: 6, display: "flex" }}
+            >
+              <QrCode size={15} weight="fill" />
+            </button>
+          )}
           {event.status !== "closed" && (
             <button
               type="button"
@@ -120,6 +132,7 @@ export function EventsHub() {
   const { announce, localEvents, rsvpdEventIds, setRsvpdEventIds, currentUser, localEvents: allEvents, setLocalEvents } = useApp();
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
+  const [ticketEvent, setTicketEvent] = useState<OrchidEvent | null>(null);
 
   function toggleRsvp(event: OrchidEvent) {
     const alreadyRsvpd = rsvpdEventIds.includes(event.id);
@@ -265,6 +278,7 @@ export function EventsHub() {
               event={event}
               rsvpd={rsvpdEventIds.includes(event.id)}
               onRsvp={() => toggleRsvp(event)}
+              onTicket={() => setTicketEvent(event)}
             />
           ))
         )}
@@ -286,6 +300,14 @@ export function EventsHub() {
             </div>
           ))}
         </section>
+      )}
+
+      {ticketEvent && (
+        <TicketModal
+          event={ticketEvent}
+          userId={currentUser.id ?? ""}
+          onClose={() => setTicketEvent(null)}
+        />
       )}
     </main>
   );
