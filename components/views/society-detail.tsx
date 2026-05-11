@@ -228,6 +228,23 @@ export function SocietyDetail() {
           </div>
         )}
       </div>
+
+      {/* Gallery */}
+      {(society.galleryUrls ?? []).length > 0 && (
+        <div className="stitch-card" style={{ padding: 24 }}>
+          <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontWeight: 700, fontSize: 14, color: "var(--on-surface)", marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Gallery
+          </h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 10 }}>
+            {(society.galleryUrls ?? []).map((url, i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" style={{ display: "block", borderRadius: 8, overflow: "hidden", aspectRatio: "1", background: "var(--surface-container)" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt={`${society.name} photo ${i + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" />
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
     </main>
   );
 }

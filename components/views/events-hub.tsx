@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarBlank, CaretDown, CaretUp, List, MapPin, UsersThree, Warning } from "@phosphor-icons/react";
+import { CalendarBlank, CaretDown, CaretUp, List, MagnifyingGlass, MapPin, UsersThree } from "@phosphor-icons/react";
 import { useState } from "react";
 import { useApp } from "@/lib/app-context";
 import { rsvpEventAction } from "@/lib/actions";
@@ -119,6 +119,7 @@ function EventRow({ event, onRsvp, rsvpd }: { event: OrchidEvent; onRsvp: () => 
 export function EventsHub() {
   const { announce, localEvents, rsvpdEventIds, setRsvpdEventIds, currentUser, localEvents: allEvents, setLocalEvents } = useApp();
   const [filter, setFilter] = useState("All");
+  const [search, setSearch] = useState("");
 
   function toggleRsvp(event: OrchidEvent) {
     const alreadyRsvpd = rsvpdEventIds.includes(event.id);
@@ -163,7 +164,12 @@ export function EventsHub() {
     "Cross-Society": "cross_society",
   };
 
-  const filtered = filter === "All" ? upcoming : upcoming.filter((e) => e.type === typeKey[filter]);
+  const q = search.toLowerCase();
+  const filtered = upcoming.filter((e) => {
+    const matchType = filter === "All" || e.type === typeKey[filter];
+    const matchSearch = !q || e.title.toLowerCase().includes(q) || e.location.toLowerCase().includes(q) || e.description?.toLowerCase().includes(q);
+    return matchType && matchSearch;
+  });
 
   const hero = upcoming[0] ?? null;
 
@@ -211,24 +217,46 @@ export function EventsHub() {
         </div>
       )}
 
-      {/* Filter bar */}
-      <div className="category-row" style={{ marginBottom: 20 }}>
-        {["All", "UKSSC", "Society", "Cross-Society"].map((item) => (
-          <button key={item} className={filter === item ? "active" : ""} onClick={() => setFilter(item)} type="button">
-            {item}
-          </button>
-        ))}
+      {/* Filter + search bar */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
+        <div className="category-row" style={{ marginBottom: 0, flex: "0 0 auto" }}>
+          {["All", "UKSSC", "Society", "Cross-Society"].map((item) => (
+            <button key={item} className={filter === item ? "active" : ""} onClick={() => setFilter(item)} type="button">
+              {item}
+            </button>
+          ))}
+        </div>
+        <div style={{ position: "relative", flex: "1 1 180px" }}>
+          <MagnifyingGlass size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--muted)", pointerEvents: "none" }} />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search events…"
+            aria-label="Search events"
+            style={{
+              width: "100%",
+              padding: "8px 12px 8px 30px",
+              border: "1.5px solid var(--outline-variant, rgba(208,194,213,0.5))",
+              borderRadius: 8,
+              fontSize: 13,
+              color: "var(--on-surface)",
+              background: "var(--surface-bright, #fff)",
+              outline: "none",
+              boxSizing: "border-box",
+            }}
+          />
+        </div>
       </div>
 
       {/* Upcoming list */}
       <section>
         <div className="section-row" style={{ marginBottom: 12 }}>
-          <h3>Upcoming Events</h3>
+          <h3>Upcoming Events {search || filter !== "All" ? <span style={{ fontSize: 13, fontWeight: 400, color: "var(--muted)" }}>({filtered.length})</span> : null}</h3>
           <span><List size={18} /></span>
         </div>
         {filtered.length === 0 ? (
           <p style={{ fontSize: 14, color: "var(--muted)", padding: "8px 0" }}>
-            {filter === "All" ? "No upcoming events." : `No upcoming ${filter} events.`}
+            {search ? `No events matching "${search}".` : filter === "All" ? "No upcoming events." : `No upcoming ${filter} events.`}
           </p>
         ) : (
           filtered.map((event) => (
