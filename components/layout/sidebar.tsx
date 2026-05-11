@@ -5,6 +5,7 @@ import {
   CalendarBlank,
   ChartLineUp,
   ChatCircleText,
+  CurrencyGbp,
   Eye,
   GearSix,
   House,
@@ -21,6 +22,7 @@ const navItems: { id: View; label: string; icon: React.ComponentType<{ size?: nu
   { id: "events", label: "Events", icon: CalendarBlank },
   { id: "forums", label: "Forums", icon: ChatCircleText },
   { id: "resources", label: "Resources", icon: Article },
+  { id: "claims", label: "Claims", icon: CurrencyGbp },
   { id: "society-admin", label: "My Society", icon: IdentificationCard },
   { id: "admin", label: "Admin", icon: ChartLineUp }
 ];
@@ -58,8 +60,11 @@ export function Sidebar() {
 
   const visibleNavItems = navItems.filter((item) => {
     const feature = NAV_FEATURE_MAP[item.id];
-    if (!feature) return true;
     if (item.id === "society-admin" && !currentUser.societyId) return false;
+    if (item.id === "claims") {
+      return can("submit_claims") || ["finance_reviewer", "ukssc_staff", "super_admin"].includes(currentUser.role);
+    }
+    if (!feature) return true;
     return can(feature);
   });
 
@@ -178,9 +183,6 @@ export function Sidebar() {
               ))}
             </select>
           </div>
-        )}
-        {can("submit_claims") && currentUser.societyId && (
-          <button className="stitch-primary full" onClick={() => setView("claims")} type="button">Submit Reimbursement</button>
         )}
         <button className="stitch-nav-item" type="button" onClick={() => setView("settings")}><GearSix size={17} /> Settings</button>
         <form action="/api/auth/signout" method="POST" style={{ width: "100%" }}>
