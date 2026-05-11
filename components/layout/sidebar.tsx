@@ -54,7 +54,7 @@ const PREVIEW_ROLES: { role: Role; label: string }[] = [
 ];
 
 export function Sidebar() {
-  const { view, setView, currentUser, viewAs, setViewAs, can } = useApp();
+  const { view, setView, currentUser, viewAs, setViewAs, can, localClaims, claimStatuses, localEvents, rsvpdEventIds } = useApp();
 
   const visibleNavItems = navItems.filter((item) => {
     const feature = NAV_FEATURE_MAP[item.id];
@@ -70,6 +70,15 @@ export function Sidebar() {
     .slice(0, 2)
     .toUpperCase();
 
+  // Badge counts for nav items
+  const now = new Date().toISOString();
+  const upcomingRsvpCount = localEvents.filter((e) => rsvpdEventIds.includes(e.id) && e.startsAt > now).length;
+  const pendingClaimsCount = localClaims.filter((c) => (claimStatuses[c.id] ?? c.status) === "submitted" || (claimStatuses[c.id] ?? c.status) === "under_review").length;
+  const navBadges: Partial<Record<View, number>> = {
+    events: upcomingRsvpCount > 0 ? upcomingRsvpCount : 0,
+    claims: pendingClaimsCount > 0 ? pendingClaimsCount : 0,
+  };
+
   return (
     <aside className="stitch-sidebar">
       <div className="stitch-brand">
@@ -80,10 +89,25 @@ export function Sidebar() {
         {visibleNavItems.map((item) => {
           const Icon = item.icon;
           const active = view === item.id;
+          const badge = navBadges[item.id] ?? 0;
           return (
-            <button key={item.id} className={`stitch-nav-item ${active ? "active" : ""}`} onClick={() => setView(item.id)} type="button">
+            <button key={item.id} className={`stitch-nav-item ${active ? "active" : ""}`} onClick={() => setView(item.id)} type="button" style={{ position: "relative" }}>
               <Icon size={17} weight={active ? "fill" : "regular"} />
               <span>{item.label}</span>
+              {badge > 0 && !active && (
+                <span style={{
+                  marginLeft: "auto",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  padding: "1px 6px",
+                  borderRadius: 999,
+                  background: "var(--primary)",
+                  color: "#fff",
+                  flexShrink: 0,
+                }}>
+                  {badge}
+                </span>
+              )}
             </button>
           );
         })}

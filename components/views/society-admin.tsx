@@ -457,7 +457,8 @@ function EventsTab({
     type: "society",
     startsAt: "",
     location: "",
-    capacity: 50
+    capacity: 50,
+    description: "",
   });
   const [editId, setEditId] = useState<string | null>(null);
 
@@ -492,6 +493,7 @@ function EventsTab({
         location: draft.location,
         capacity: draft.capacity,
         societyIds: [societyId],
+        description: draft.description?.trim() || undefined,
       }).then((saved) => {
         setAllEvents(allWithOptimistic.map((e) => e.id === optimistic.id ? saved : e));
         setLocalEvents(localWithOptimistic.map((e) => e.id === optimistic.id ? saved : e));
@@ -499,7 +501,7 @@ function EventsTab({
     }
     setShowForm(false);
     setEditId(null);
-    setDraft({ title: "", type: "society", startsAt: "", location: "", capacity: 50 });
+    setDraft({ title: "", type: "society", startsAt: "", location: "", capacity: 50, description: "" });
   }
 
   function toggleRsvpList(event: OrchidEvent) {
@@ -532,7 +534,7 @@ function EventsTab({
   }
 
   function handleEdit(event: OrchidEvent) {
-    setDraft({ title: event.title, type: event.type, startsAt: event.startsAt, location: event.location, capacity: event.capacity });
+    setDraft({ title: event.title, type: event.type, startsAt: event.startsAt, location: event.location, capacity: event.capacity, description: event.description ?? "" });
     setEditId(event.id);
     setShowForm(true);
   }
@@ -562,7 +564,7 @@ function EventsTab({
     <div>
       {isCommittee && (
         <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
-          <button type="button" className="stitch-primary" onClick={() => { setShowForm(true); setEditId(null); setDraft({ title: "", type: "society", startsAt: "", location: "", capacity: 50 }); }}>
+          <button type="button" className="stitch-primary" onClick={() => { setShowForm(true); setEditId(null); setDraft({ title: "", type: "society", startsAt: "", location: "", capacity: 50, description: "" }); }}>
             <Plus size={15} /> New Event
           </button>
         </div>
@@ -597,6 +599,9 @@ function EventsTab({
                 <input style={inputStyle} value={draft.location} onChange={(e) => setDraft({ ...draft, location: e.target.value })} placeholder="e.g. Bloomsbury, London" />
               </FieldRow>
             </div>
+            <FieldRow label="Description">
+              <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 72, lineHeight: 1.6 } as React.CSSProperties} value={draft.description ?? ""} onChange={(e) => setDraft({ ...draft, description: e.target.value })} placeholder="Optional — what should attendees know about this event?" />
+            </FieldRow>
           </div>
           <div style={{ display: "flex", gap: 10, marginTop: 16, justifyContent: "flex-end" }}>
             <button type="button" className="stitch-secondary" onClick={() => { setShowForm(false); setEditId(null); }}>Cancel</button>
