@@ -20,6 +20,7 @@ const AdminView = lazy(() => import("@/components/views/admin-view").then((m) =>
 const ClaimsView = lazy(() => import("@/components/views/claims-view").then((m) => ({ default: m.ClaimsView })));
 const AdminDataView = lazy(() => import("@/components/views/admin-data").then((m) => ({ default: m.AdminDataView })));
 const SettingsView = lazy(() => import("@/components/views/settings-view").then((m) => ({ default: m.SettingsView })));
+const CheckinView  = lazy(() => import("@/components/views/checkin-view").then((m) => ({ default: m.CheckinView })));
 
 function ViewSkeleton() {
   return <div className="stitch-main" style={{ paddingTop: 40 }} aria-busy="true" aria-label="Loading…" />;
@@ -82,7 +83,8 @@ function AppShell() {
             {view === "admin" && <AdminView />}
             {view === "claims" && <ClaimsView />}
             {view === "admin-data" && <AdminDataView />}
-            {view === "settings" && <SettingsView />}
+            {view === "settings"      && <SettingsView />}
+            {view === "checkin-admin" && <CheckinView />}
           </Suspense>
         </ErrorBoundary>
         <Footer />

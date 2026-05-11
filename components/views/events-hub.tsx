@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarBlank, List, MapPin, UsersThree } from "@phosphor-icons/react";
+import { CalendarBlank, List, MapPin, QrCode, UsersThree, Clock } from "@phosphor-icons/react";
 import { useState } from "react";
 import { useApp } from "@/lib/app-context";
 import { rsvpEventAction } from "@/lib/actions";
@@ -14,15 +14,15 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const TYPE_COLORS: Record<string, { bg: string; color: string }> = {
-  ukssc: { bg: "var(--primary-soft)", color: "var(--primary)" },
-  society: { bg: "var(--secondary-container)", color: "var(--on-secondary-container)" },
+  ukssc:         { bg: "var(--primary-soft)", color: "var(--primary)" },
+  society:       { bg: "var(--secondary-container)", color: "var(--on-secondary-container)" },
   cross_society: { bg: "#fff3cd", color: "#856404" },
 };
 
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
-  open: { bg: "var(--secondary-container)", color: "var(--on-secondary-container)" },
+  open:     { bg: "var(--secondary-container)", color: "var(--on-secondary-container)" },
   waitlist: { bg: "#fff3cd", color: "#856404" },
-  closed: { bg: "var(--surface-container)", color: "var(--muted)" },
+  closed:   { bg: "var(--surface-container)", color: "var(--muted)" },
 };
 
 function formatDate(startsAt: string) {
@@ -35,80 +35,194 @@ function formatTime(startsAt: string) {
   return new Date(startsAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
 }
 
-function EventRow({ event, onRsvp, rsvpd }: { event: OrchidEvent; onRsvp: () => void; rsvpd: boolean }) {
-  const typeStyle = TYPE_COLORS[event.type] ?? TYPE_COLORS.ukssc;
-  const statusStyle = STATUS_COLORS[event.status] ?? STATUS_COLORS.closed;
-  const spotsLeft = event.capacity - event.rsvps;
+function QrPass({ eventId, userId, eventTitle }: { eventId: string; userId: string; eventTitle: string }) {
+  const token = `ORCHID-${eventId}-${userId}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(token)}&bgcolor=ffffff&color=000000&margin=10`;
 
   return (
-    <div className="stitch-card" style={{ padding: "18px 22px", display: "flex", alignItems: "center", gap: 18, marginBottom: 10 }}>
-      {/* Date column */}
-      <div style={{ textAlign: "center", minWidth: 48, flexShrink: 0 }}>
-        <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "var(--primary)", letterSpacing: "0.05em" }}>
-          {new Date(event.startsAt).toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" })}
-        </div>
-        <div style={{ fontSize: 26, fontWeight: 800, color: "var(--on-surface)", lineHeight: 1.1 }}>
-          {new Date(event.startsAt).toLocaleDateString("en-GB", { day: "numeric", timeZone: "UTC" })}
-        </div>
-        <div style={{ fontSize: 10, color: "var(--muted)" }}>
-          {formatTime(event.startsAt)}
-        </div>
-      </div>
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: 8,
+      padding: "16px 20px",
+      borderRadius: 12,
+      background: "var(--surface-container, #faf7fb)",
+      border: "1.5px solid var(--outline-variant, rgba(208,194,213,0.4))",
+      maxWidth: 200,
+    }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={qrUrl} alt={`QR check-in pass for ${eventTitle}`} width={160} height={160} style={{ borderRadius: 8 }} />
+      <p style={{ fontSize: 10, color: "var(--muted)", textAlign: "center", margin: 0, lineHeight: 1.4 }}>
+        Show this at the door<br />
+        <span style={{ fontFamily: "monospace", fontSize: 9, wordBreak: "break-all" }}>{token.slice(0, 24)}…</span>
+      </p>
+    </div>
+  );
+}
 
-      {/* Main info */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", gap: 6, marginBottom: 5, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "2px 8px", borderRadius: 999, background: typeStyle.bg, color: typeStyle.color }}>
-            {TYPE_LABELS[event.type] ?? event.type}
-          </span>
-          <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "2px 8px", borderRadius: 999, background: statusStyle.bg, color: statusStyle.color }}>
-            {event.status}
-          </span>
+function EventRow({
+  event,
+  onRsvp,
+  rsvpd,
+  waitlisted,
+  userId,
+  canCheckIn,
+  onManageCheckin,
+}: {
+  event: OrchidEvent;
+  onRsvp: () => void;
+  rsvpd: boolean;
+  waitlisted?: boolean;
+  userId: string;
+  canCheckIn: boolean;
+  onManageCheckin: (event: OrchidEvent) => void;
+}) {
+  const [showQr, setShowQr] = useState(false);
+  const typeStyle  = TYPE_COLORS[event.type]   ?? TYPE_COLORS.ukssc;
+  const statusStyle = STATUS_COLORS[event.status] ?? STATUS_COLORS.closed;
+  const spotsLeft  = event.capacity - event.rsvps;
+  const isAtCapacity = spotsLeft <= 0;
+
+  return (
+    <div className="stitch-card" style={{ padding: "18px 22px", marginBottom: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+        {/* Date column */}
+        <div style={{ textAlign: "center", minWidth: 48, flexShrink: 0 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "var(--primary)", letterSpacing: "0.05em" }}>
+            {new Date(event.startsAt).toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" })}
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: "var(--on-surface)", lineHeight: 1.1 }}>
+            {new Date(event.startsAt).toLocaleDateString("en-GB", { day: "numeric", timeZone: "UTC" })}
+          </div>
+          <div style={{ fontSize: 10, color: "var(--muted)" }}>{formatTime(event.startsAt)}</div>
         </div>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--on-surface)", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {event.title}
+
+        {/* Main info */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", gap: 6, marginBottom: 5, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "2px 8px", borderRadius: 999, background: typeStyle.bg, color: typeStyle.color }}>
+              {TYPE_LABELS[event.type] ?? event.type}
+            </span>
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "2px 8px", borderRadius: 999, background: statusStyle.bg, color: statusStyle.color }}>
+              {event.status === "waitlist" ? "Waitlist" : event.status}
+            </span>
+          </div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--on-surface)", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {event.title}
+          </div>
+          <div style={{ display: "flex", gap: 14, fontSize: 12, color: "var(--muted)", flexWrap: "wrap" }}>
+            <span><MapPin size={12} style={{ display: "inline", verticalAlign: "middle" }} /> {event.location}</span>
+            <span><UsersThree size={12} style={{ display: "inline", verticalAlign: "middle" }} /> {event.rsvps}/{event.capacity}</span>
+            {isAtCapacity && !rsvpd && (
+              <span style={{ color: "#b91c1c", fontWeight: 600 }}>Full — join waitlist</span>
+            )}
+            {!isAtCapacity && spotsLeft <= 20 && (
+              <span style={{ color: "#856404", fontWeight: 600 }}>Only {spotsLeft} spot{spotsLeft !== 1 ? "s" : ""} left</span>
+            )}
+          </div>
         </div>
-        <div style={{ display: "flex", gap: 14, fontSize: 12, color: "var(--muted)", flexWrap: "wrap" }}>
-          <span><MapPin size={12} style={{ display: "inline", verticalAlign: "middle" }} /> {event.location}</span>
-          <span><UsersThree size={12} style={{ display: "inline", verticalAlign: "middle" }} /> {event.rsvps}/{event.capacity} RSVPs</span>
-          {spotsLeft > 0 && spotsLeft <= 20 && (
-            <span style={{ color: "#856404", fontWeight: 600 }}>Only {spotsLeft} spots left</span>
+
+        {/* Actions */}
+        <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          {event.status !== "closed" && (
+            <>
+              {rsvpd && !waitlisted && (
+                <button type="button" className="stitch-secondary" style={{ fontSize: 12 }} onClick={() => setShowQr((v) => !v)}>
+                  <QrCode size={14} /> {showQr ? "Hide pass" : "My pass"}
+                </button>
+              )}
+              {waitlisted ? (
+                <button type="button" className="stitch-secondary" style={{ fontSize: 12, color: "#856404", borderColor: "#856404" }} onClick={onRsvp}>
+                  On waitlist ✓
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className={rsvpd ? "stitch-secondary" : "stitch-primary"}
+                  onClick={onRsvp}
+                >
+                  {rsvpd ? "RSVP'd ✓" : isAtCapacity ? "Join Waitlist" : "RSVP"}
+                </button>
+              )}
+            </>
+          )}
+          {canCheckIn && (
+            <button type="button" className="stitch-secondary" style={{ fontSize: 12 }} onClick={() => onManageCheckin(event)}>
+              Check-in
+            </button>
           )}
         </div>
       </div>
 
-      {/* Action */}
-      {event.status !== "closed" && (
-        <button
-          type="button"
-          className={rsvpd ? "stitch-secondary" : "stitch-primary"}
-          style={{ flexShrink: 0 }}
-          onClick={onRsvp}
-        >
-          {rsvpd ? "RSVP'd ✓" : "RSVP"}
-        </button>
+      {/* QR pass drop-down */}
+      {showQr && rsvpd && !waitlisted && (
+        <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--outline-variant, rgba(208,194,213,0.3))", display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
+          <QrPass eventId={event.id} userId={userId} eventTitle={event.title} />
+          <div style={{ flex: 1, minWidth: 180 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--on-surface)", marginBottom: 4 }}>Your check-in pass</div>
+            <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
+              Show this QR code at the door. Staff will scan it to mark your attendance.
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 10, fontSize: 12, color: "var(--muted)" }}>
+              <CalendarBlank size={13} style={{ display: "inline", verticalAlign: "middle" }} /> {formatDate(event.startsAt)}
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 4, fontSize: 12, color: "var(--muted)" }}>
+              <MapPin size={13} style={{ display: "inline", verticalAlign: "middle" }} /> {event.location}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
 }
 
 export function EventsHub() {
-  const { announce, localEvents, rsvpdEventIds, setRsvpdEventIds, currentUser, localEvents: allEvents, setLocalEvents } = useApp();
+  const { announce, localEvents, rsvpdEventIds, setRsvpdEventIds, currentUser, setLocalEvents, setView, can } = useApp();
   const [filter, setFilter] = useState("All");
+  const [waitlistedIds, setWaitlistedIds] = useState<string[]>([]);
 
-  function toggleRsvp(event: OrchidEvent) {
+  const canCheckIn = currentUser.role === "super_admin" || currentUser.role === "ukssc_staff" || currentUser.role === "society_admin";
+  const canRsvp = can("rsvp_events");
+
+  function handleManageCheckin(event: OrchidEvent) {
+    // Store the selected event ID for the checkin view
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("checkin_event_id", event.id);
+      sessionStorage.setItem("checkin_event_title", event.title);
+    }
+    setView("checkin-admin");
+  }
+
+  async function toggleRsvp(event: OrchidEvent) {
+    if (!canRsvp) {
+      announce("Your role does not allow RSVP to events.");
+      return;
+    }
+
     const alreadyRsvpd = rsvpdEventIds.includes(event.id);
+    const alreadyWaitlisted = waitlistedIds.includes(event.id);
+    const isAtCapacity = event.rsvps >= event.capacity;
+
     // Optimistic update
-    const nextIds = alreadyRsvpd
-      ? rsvpdEventIds.filter((id) => id !== event.id)
-      : [...rsvpdEventIds, event.id];
-    setRsvpdEventIds(nextIds);
-    // Update local event RSVP count
-    setLocalEvents(allEvents.map((e) =>
-      e.id === event.id ? { ...e, rsvps: Math.max(0, e.rsvps + (alreadyRsvpd ? -1 : 1)) } : e
-    ));
-    announce(alreadyRsvpd ? `RSVP cancelled for ${event.title}.` : "RSVP confirmed. QR check-in will be available before the event.");
-    // Persist to DB
+    if (alreadyRsvpd || alreadyWaitlisted) {
+      setRsvpdEventIds(rsvpdEventIds.filter((id) => id !== event.id));
+      setWaitlistedIds(waitlistedIds.filter((id) => id !== event.id));
+      setLocalEvents(localEvents.map((e) =>
+        e.id === event.id ? { ...e, rsvps: Math.max(0, e.rsvps - 1) } : e
+      ));
+      announce(`RSVP cancelled for ${event.title}.`);
+    } else if (isAtCapacity) {
+      setWaitlistedIds([...waitlistedIds, event.id]);
+      announce(`Added to waitlist for ${event.title}. You'll be notified if a spot opens.`);
+    } else {
+      setRsvpdEventIds([...rsvpdEventIds, event.id]);
+      setLocalEvents(localEvents.map((e) =>
+        e.id === event.id ? { ...e, rsvps: e.rsvps + 1, status: e.rsvps + 1 >= e.capacity ? "waitlist" : e.status } : e
+      ));
+      announce(`RSVP confirmed for ${event.title}. Your QR check-in pass is now available.`);
+    }
+
     if (currentUser.id) {
       rsvpEventAction(event.id, currentUser.id).catch(() =>
         announce("RSVP saved locally but failed to sync.")
@@ -125,13 +239,12 @@ export function EventsHub() {
     .sort((a, b) => b.startsAt.localeCompare(a.startsAt));
 
   const typeKey: Record<string, OrchidEvent["type"]> = {
-    "UKSSC": "ukssc",
-    "Society": "society",
+    UKSSC: "ukssc",
+    Society: "society",
     "Cross-Society": "cross_society",
   };
 
   const filtered = filter === "All" ? upcoming : upcoming.filter((e) => e.type === typeKey[filter]);
-
   const hero = upcoming[0] ?? null;
 
   return (
@@ -150,6 +263,11 @@ export function EventsHub() {
               <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", padding: "3px 10px", borderRadius: 999, background: "rgba(157,78,221,0.12)", color: "var(--primary)" }}>
                 {TYPE_LABELS[hero.type] ?? hero.type}
               </span>
+              {hero.rsvps >= hero.capacity && (
+                <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", padding: "3px 10px", borderRadius: 999, background: "#fff3cd", color: "#856404" }}>
+                  Waitlist
+                </span>
+              )}
             </div>
             <h2 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontWeight: 800, fontSize: 22, color: "var(--on-surface)", margin: "0 0 8px", lineHeight: 1.2 }}>
               {hero.title}
@@ -157,17 +275,25 @@ export function EventsHub() {
             <div style={{ display: "flex", gap: 16, fontSize: 13, color: "var(--muted)", flexWrap: "wrap" }}>
               <span><CalendarBlank size={14} style={{ display: "inline", verticalAlign: "middle" }} /> {formatDate(hero.startsAt)}</span>
               <span><MapPin size={14} style={{ display: "inline", verticalAlign: "middle" }} /> {hero.location}</span>
-              <span><UsersThree size={14} style={{ display: "inline", verticalAlign: "middle" }} /> {hero.rsvps}/{hero.capacity} RSVPs</span>
+              <span><UsersThree size={14} style={{ display: "inline", verticalAlign: "middle" }} /> {hero.rsvps}/{hero.capacity}</span>
             </div>
           </div>
-          <button
-            className={rsvpdEventIds.includes(hero.id) ? "stitch-secondary" : "stitch-primary"}
-            style={{ flexShrink: 0, padding: "12px 28px", fontSize: 15 }}
-            onClick={() => toggleRsvp(hero)}
-            type="button"
-          >
-            {rsvpdEventIds.includes(hero.id) ? "RSVP'd ✓" : "RSVP Now"}
-          </button>
+          {canRsvp && (
+            <button
+              className={rsvpdEventIds.includes(hero.id) ? "stitch-secondary" : "stitch-primary"}
+              style={{ flexShrink: 0, padding: "12px 28px", fontSize: 15 }}
+              onClick={() => toggleRsvp(hero)}
+              type="button"
+            >
+              {rsvpdEventIds.includes(hero.id)
+                ? "RSVP'd ✓"
+                : waitlistedIds.includes(hero.id)
+                ? "On waitlist"
+                : hero.rsvps >= hero.capacity
+                ? "Join Waitlist"
+                : "RSVP Now"}
+            </button>
+          )}
         </div>
       ) : (
         <div className="stitch-card" style={{ padding: 32, textAlign: "center", marginBottom: 24, background: "var(--surface-container, #faf7fb)" }}>
@@ -203,7 +329,11 @@ export function EventsHub() {
               key={event.id}
               event={event}
               rsvpd={rsvpdEventIds.includes(event.id)}
+              waitlisted={waitlistedIds.includes(event.id)}
               onRsvp={() => toggleRsvp(event)}
+              userId={currentUser.id}
+              canCheckIn={canCheckIn}
+              onManageCheckin={handleManageCheckin}
             />
           ))
         )}
@@ -217,11 +347,18 @@ export function EventsHub() {
           </div>
           {past.slice(0, 5).map((event) => (
             <div key={event.id} className="stitch-card" style={{ padding: "14px 20px", display: "flex", gap: 14, alignItems: "center", marginBottom: 8, opacity: 0.65 }}>
-              <CalendarBlank size={15} style={{ color: "var(--muted)", flexShrink: 0 }} />
+              <Clock size={15} style={{ color: "var(--muted)", flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "var(--on-surface)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{event.title}</div>
-                <div style={{ fontSize: 11, color: "var(--muted)" }}>{formatDate(event.startsAt)} · {event.location} · {event.checkedIn} attended</div>
+                <div style={{ fontSize: 11, color: "var(--muted)" }}>
+                  {formatDate(event.startsAt)} · {event.location} · {event.checkedIn} attended / {event.rsvps} RSVP'd
+                </div>
               </div>
+              {event.rsvps > 0 && (
+                <span style={{ fontSize: 11, color: "var(--muted)" }}>
+                  {Math.round((event.checkedIn / event.rsvps) * 100)}% turnout
+                </span>
+              )}
             </div>
           ))}
         </section>

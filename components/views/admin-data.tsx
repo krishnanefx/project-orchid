@@ -8,9 +8,11 @@ import {
   Plus,
   UsersThree,
   CheckCircle,
-  Warning
+  Warning,
+  IdentificationCard,
+  UploadSimple,
 } from "@phosphor-icons/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useApp } from "@/lib/app-context";
 import { universities } from "@/lib/data";
 import {
@@ -18,16 +20,21 @@ import {
   createEventAction,
   createResourceAction,
   createForumBoardAction,
+  getMembersAction,
+  updateMembershipAction,
+  updateProfileRoleAction,
 } from "@/lib/actions";
-import type { ForumBoard, OrchidEvent, Resource, Society } from "@/lib/types";
+import type { ForumBoard, Membership, MembershipStatus, OrchidEvent, Resource, Role, Society } from "@/lib/types";
+import { ROLE_DISPLAY } from "@/lib/permissions";
 
-type Tab = "societies" | "events" | "resources" | "forums";
+type Tab = "societies" | "events" | "resources" | "forums" | "members";
 
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ size?: number; weight?: "regular" | "fill" }> }[] = [
   { id: "societies", label: "Societies", icon: UsersThree },
-  { id: "events", label: "Events", icon: CalendarBlank },
+  { id: "events",    label: "Events",    icon: CalendarBlank },
   { id: "resources", label: "Resources", icon: Article },
-  { id: "forums", label: "Forum Boards", icon: ChatCircleText },
+  { id: "forums",    label: "Forum Boards", icon: ChatCircleText },
+  { id: "members",   label: "Members",   icon: IdentificationCard },
 ];
 
 function StatusBanner({ status, message }: { status: "success" | "error"; message: string }) {
@@ -278,6 +285,7 @@ function ResourcesTab() {
   const { localResources, setLocalResources, announce } = useApp();
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const [resourceFile, setResourceFile] = useState<File | null>(null);
   const [form, setForm] = useState({
     title: "",
     category: "guide" as Resource["category"],
@@ -292,15 +300,29 @@ function ResourcesTab() {
     }
     setSaving(true);
     setStatus(null);
+
+    let filePath: string | undefined;
+    if (resourceFile) {
+      const fd = new FormData();
+      fd.append("file", resourceFile);
+      const res = await fetch("/api/storage/upload-resource", { method: "POST", body: fd });
+      if (res.ok) {
+        const json = await res.json() as { url: string };
+        filePath = json.url;
+      }
+    }
+
     try {
       const resource = await createResourceAction({
         title: form.title.trim(),
         category: form.category,
         audience: form.audience.trim(),
         body: form.body.trim(),
+        filePath,
       });
       setLocalResources([resource, ...localResources]);
       setForm({ title: "", category: "guide", audience: "", body: "" });
+      setResourceFile(null);
       setStatus({ type: "success", msg: `"${resource.title}" published.` });
       announce(`Resource "${resource.title}" published.`);
     } catch (err) {
@@ -326,6 +348,15 @@ function ResourcesTab() {
           </label>
           <label>Audience *<input value={form.audience} onChange={(e) => setForm((p) => ({ ...p, audience: e.target.value }))} placeholder="All verified users" /></label>
           <label>Content<textarea value={form.body} onChange={(e) => setForm((p) => ({ ...p, body: e.target.value }))} placeholder="Full article content or summary…" rows={6} /></label>
+          <label>
+            Attach file (optional)
+            <input type="file" onChange={(e) => setResourceFile(e.target.files?.[0] ?? null)} />
+            {resourceFile && (
+              <span style={{ fontSize: 11, color: "var(--primary)", marginTop: 4, display: "block" }}>
+                <UploadSimple size={12} style={{ display: "inline", verticalAlign: "middle" }} /> {resourceFile.name}
+              </span>
+            )}
+          </label>
           <button className="stitch-primary full" type="button" onClick={handleCreate} disabled={saving}>
             <Plus size={15} /> {saving ? "Publishing…" : "Publish Resource"}
           </button>
@@ -346,6 +377,11 @@ function ResourcesTab() {
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "var(--on-surface)" }}>{r.title}</div>
                 <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{r.audience} &middot; {r.publishedAt}</div>
+                {r.filePath && (
+                  <a href={r.filePath} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: "var(--primary)", marginTop: 4, display: "block" }}>
+                    Download attachment →
+                  </a>
+                )}
               </div>
             ))}
           </div>
@@ -443,6 +479,187 @@ function ForumsTab() {
   );
 }
 
+// ── Members Tab ───────────────────────────────────────────────────────────────
+
+const MEMBERSHIP_STATUS_LABELS: Record<MembershipStatus, string> = {
+  active:            "Active",
+  pending_review:    "Pending Review",
+  committee:         "Committee",
+  suspended:         "Suspended",
+  left:              "Left",
+  alumni_conversion: "Alumni",
+};
+
+const MEMBERSHIP_STATUS_COLORS: Record<MembershipStatus, { bg: string; color: string }> = {
+  active:            { bg: "var(--secondary-container)", color: "var(--on-secondary-container)" },
+  committee:         { bg: "var(--primary-soft)", color: "var(--primary)" },
+  pending_review:    { bg: "#fff8e1", color: "#b45309" },
+  suspended:         { bg: "#fef2f2", color: "#b91c1c" },
+  left:              { bg: "var(--surface-container)", color: "var(--muted)" },
+  alumni_conversion: { bg: "#f0f4ff", color: "#3b4dc8" },
+};
+
+function MembersTab() {
+  const [members, setMembers] = useState<Membership[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [editNotes, setEditNotes] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState<string | null>(null);
+  const { announce } = useApp();
+
+  useEffect(() => {
+    getMembersAction().then((data) => { setMembers(data); setLoading(false); }).catch(() => setLoading(false));
+  }, []);
+
+  async function handleStatusChange(m: Membership, status: MembershipStatus) {
+    setSaving(m.id);
+    try {
+      await updateMembershipAction(m.id, { status, notes: editNotes[m.id] ?? m.notes });
+      setMembers((prev) => prev.map((x) => x.id === m.id ? { ...x, status } : x));
+      announce(`${m.profileName} status set to ${MEMBERSHIP_STATUS_LABELS[status]}.`);
+    } catch (err) {
+      announce(err instanceof Error ? err.message : "Update failed.");
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function handleRoleChange(m: Membership, role: Role) {
+    setSaving(m.id);
+    try {
+      await updateProfileRoleAction(m.profileId, role);
+      setMembers((prev) => prev.map((x) => x.id === m.id ? { ...x, profileRole: role } : x));
+      announce(`${m.profileName} platform role set to ${ROLE_DISPLAY[role] ?? role}.`);
+    } catch (err) {
+      announce(err instanceof Error ? err.message : "Role update failed.");
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  const filtered = members.filter((m) =>
+    !search || m.profileName.toLowerCase().includes(search.toLowerCase()) ||
+    m.profileEmail.toLowerCase().includes(search.toLowerCase()) ||
+    m.societyName?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  if (loading) return <p style={{ color: "var(--muted)", fontSize: 14 }}>Loading members…</p>;
+
+  return (
+    <div>
+      <div style={{ marginBottom: 16, display: "flex", gap: 12, alignItems: "center" }}>
+        <input
+          style={{ flex: 1, padding: "9px 12px", border: "1.5px solid var(--outline-variant, rgba(208,194,213,0.5))", borderRadius: 8, fontSize: 13 }}
+          placeholder="Search by name, email, or society…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <span style={{ fontSize: 13, color: "var(--muted)", whiteSpace: "nowrap" }}>{filtered.length} member{filtered.length !== 1 ? "s" : ""}</span>
+      </div>
+
+      {filtered.length === 0 ? (
+        <p style={{ color: "var(--muted)", fontSize: 14 }}>No members found{search ? " matching your search" : ". Members appear here once they join a society."}.</p>
+      ) : (
+        <div style={{ display: "grid", gap: 8 }}>
+          {filtered.map((m) => {
+            const statusStyle = MEMBERSHIP_STATUS_COLORS[m.status] ?? MEMBERSHIP_STATUS_COLORS.active;
+            const isExpanded = expandedId === m.id;
+            return (
+              <div key={m.id} className="stitch-card" style={{ padding: 0, overflow: "hidden" }}>
+                <button
+                  type="button"
+                  style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 18px", width: "100%", border: "none", background: "none", cursor: "pointer", textAlign: "left" }}
+                  onClick={() => setExpandedId(isExpanded ? null : m.id)}
+                >
+                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--primary-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: "var(--primary)", flexShrink: 0 }}>
+                    {m.profileName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--on-surface)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {m.profileName}
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--muted)" }}>
+                      {m.profileEmail} · {m.societyName ?? "—"}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "2px 8px", borderRadius: 999, background: statusStyle.bg, color: statusStyle.color }}>
+                      {MEMBERSHIP_STATUS_LABELS[m.status]}
+                    </span>
+                    <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "2px 8px", borderRadius: 999, background: "var(--surface-container)", color: "var(--muted)" }}>
+                      {ROLE_DISPLAY[m.profileRole] ?? m.profileRole}
+                    </span>
+                  </div>
+                </button>
+
+                {isExpanded && (
+                  <div style={{ padding: "0 18px 18px", display: "grid", gap: 12, borderTop: "1px solid var(--outline-variant, rgba(208,194,213,0.3))", paddingTop: 16 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                      <label style={{ fontSize: 12 }}>
+                        <span style={{ display: "block", fontWeight: 700, color: "var(--muted)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>Membership status</span>
+                        <select
+                          value={m.status}
+                          disabled={saving === m.id}
+                          onChange={(e) => handleStatusChange(m, e.target.value as MembershipStatus)}
+                          style={{ width: "100%", padding: "8px 10px", border: "1.5px solid var(--outline-variant, rgba(208,194,213,0.5))", borderRadius: 8, fontSize: 13 }}
+                        >
+                          {(Object.keys(MEMBERSHIP_STATUS_LABELS) as MembershipStatus[]).map((s) => (
+                            <option key={s} value={s}>{MEMBERSHIP_STATUS_LABELS[s]}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label style={{ fontSize: 12 }}>
+                        <span style={{ display: "block", fontWeight: 700, color: "var(--muted)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>Platform role</span>
+                        <select
+                          value={m.profileRole}
+                          disabled={saving === m.id}
+                          onChange={(e) => handleRoleChange(m, e.target.value as Role)}
+                          style={{ width: "100%", padding: "8px 10px", border: "1.5px solid var(--outline-variant, rgba(208,194,213,0.5))", borderRadius: 8, fontSize: 13 }}
+                        >
+                          {(Object.entries(ROLE_DISPLAY) as [Role, string][]).map(([r, label]) => (
+                            <option key={r} value={r}>{label}</option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    <label style={{ fontSize: 12 }}>
+                      <span style={{ display: "block", fontWeight: 700, color: "var(--muted)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>Admin notes</span>
+                      <textarea
+                        value={editNotes[m.id] ?? m.notes ?? ""}
+                        onChange={(e) => setEditNotes((p) => ({ ...p, [m.id]: e.target.value }))}
+                        placeholder="Internal notes about this member…"
+                        rows={2}
+                        style={{ width: "100%", padding: "8px 10px", border: "1.5px solid var(--outline-variant, rgba(208,194,213,0.5))", borderRadius: 8, fontSize: 13, resize: "vertical", boxSizing: "border-box" }}
+                      />
+                    </label>
+                    {editNotes[m.id] !== undefined && editNotes[m.id] !== m.notes && (
+                      <button
+                        type="button"
+                        className="stitch-secondary"
+                        style={{ alignSelf: "flex-start" }}
+                        disabled={saving === m.id}
+                        onClick={() => handleStatusChange(m, m.status)}
+                      >
+                        {saving === m.id ? "Saving…" : "Save notes"}
+                      </button>
+                    )}
+                    <p style={{ fontSize: 11, color: "var(--muted)", margin: 0 }}>
+                      Joined {new Date(m.joinedAt).toLocaleDateString("en-GB")}
+                      {m.leftAt ? ` · Left ${new Date(m.leftAt).toLocaleDateString("en-GB")}` : ""}
+                      {m.notes && ` · Note: ${m.notes}`}
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main View ─────────────────────────────────────────────────────────────────
 
 export function AdminDataView() {
@@ -508,6 +725,7 @@ export function AdminDataView() {
       {tab === "events" && <EventsTab />}
       {tab === "resources" && <ResourcesTab />}
       {tab === "forums" && <ForumsTab />}
+      {tab === "members" && <MembersTab />}
     </main>
   );
 }
