@@ -172,3 +172,36 @@ export type Resource = {
   audience: string;
   publishedAt: string;
 };
+
+export type ForumReply = {
+  id: string;
+  threadId: string;
+  body: string;
+  authorId: string;
+  authorName: string;
+  createdAt: string;
+};
+
+export type MemberRow = {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  universityId?: string;
+  societyId?: string;
+  course?: string;
+  year?: string;
+  verified: boolean;
+  consentStatus: "accepted" | "pending";
+  joinedAt?: string;
+  membershipRole?: string;
+};
+
+export type EventRsvpRow = {
+  id: string;
+  eventId: string;
+  profileId: string;
+  profileName: string;
+  status: string;
+  checkedInAt: string | null;
+};

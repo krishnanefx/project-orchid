@@ -1,9 +1,9 @@
 "use client";
 
-import { FloppyDisk, User } from "@phosphor-icons/react";
+import { FloppyDisk, LockKey, User } from "@phosphor-icons/react";
 import { useState } from "react";
 import { useApp } from "@/lib/app-context";
-import { updateProfileAction } from "@/lib/actions";
+import { sendPasswordResetAction, updateProfileAction } from "@/lib/actions";
 import { universities } from "@/lib/data";
 
 const inputStyle: React.CSSProperties = {
@@ -40,6 +40,7 @@ export function SettingsView() {
   const [accessibility, setAccessibility] = useState(currentUser.accessibilityNeeds ?? "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [sendingReset, setSendingReset] = useState(false);
 
   const university = universities.find((u) => u.id === currentUser.universityId);
   const mySociety = localSocieties.find((s) => s.id === currentUser.societyId);
@@ -211,6 +212,36 @@ export function SettingsView() {
               />
             </div>
           </div>
+        </div>
+
+        {/* Account security */}
+        <div className="stitch-card" style={{ padding: 24, marginBottom: 24 }}>
+          <h3 style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--on-surface)", marginBottom: 6 }}>
+            Account Security
+          </h3>
+          <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 16 }}>
+            A password reset link will be sent to <strong>{currentUser.email}</strong>. Follow the link to set a new password.
+          </p>
+          <button
+            type="button"
+            className="stitch-secondary"
+            disabled={sendingReset}
+            style={{ display: "flex", alignItems: "center", gap: 8 }}
+            onClick={async () => {
+              setSendingReset(true);
+              try {
+                await sendPasswordResetAction(currentUser.email);
+                announce("Password reset email sent — check your inbox.");
+              } catch {
+                announce("Failed to send reset email. Try again.");
+              } finally {
+                setSendingReset(false);
+              }
+            }}
+          >
+            <LockKey size={15} />
+            {sendingReset ? "Sending…" : "Send Password Reset Email"}
+          </button>
         </div>
 
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
