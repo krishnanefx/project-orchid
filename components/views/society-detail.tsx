@@ -122,7 +122,7 @@ export function SocietyDetail() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+      <div className="grid-2" style={{ gap: 16, marginBottom: 20 }}>
         {/* Committee */}
         <div className="stitch-card" style={{ padding: 24 }}>
           <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontWeight: 700, fontSize: 14, color: "var(--on-surface)", marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.04em" }}>

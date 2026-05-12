@@ -216,7 +216,7 @@ export function SettingsView() {
               <p style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>Email is managed through your authentication provider.</p>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <div className="grid-2" style={{ gap: 16 }}>
               <div>
                 <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.04em" }}>
                   Course / Degree
