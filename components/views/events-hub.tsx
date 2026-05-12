@@ -77,12 +77,25 @@ function formatTime(startsAt: string) {
   return new Date(startsAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
 }
 
+function timeUntilLabel(startsAt: string): string | null {
+  const diff = new Date(startsAt).getTime() - Date.now();
+  if (diff <= 0) return null;
+  const hours = diff / (1000 * 60 * 60);
+  if (hours < 1) return "< 1 hour away";
+  if (hours < 24) return `${Math.round(hours)}h away`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "Tomorrow";
+  if (days <= 7) return `In ${days} days`;
+  return null; // no badge for distant events
+}
+
 function EventRow({ event, onRsvp, onTicket, rsvpd }: { event: OrchidEvent; onRsvp: () => void; onTicket: () => void; rsvpd: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const typeStyle = TYPE_COLORS[event.type] ?? TYPE_COLORS.ukssc;
   const statusStyle = STATUS_COLORS[event.status] ?? STATUS_COLORS.closed;
   const spotsLeft = event.capacity - event.rsvps;
   const hasDetails = !!(event.description?.trim());
+  const countdown = timeUntilLabel(event.startsAt);
 
   return (
     <div className="stitch-card" style={{ padding: 0, marginBottom: 10, overflow: "hidden" }}>
@@ -102,13 +115,22 @@ function EventRow({ event, onRsvp, onTicket, rsvpd }: { event: OrchidEvent; onRs
 
         {/* Main info */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", gap: 6, marginBottom: 5, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 6, marginBottom: 5, flexWrap: "wrap", alignItems: "center" }}>
             <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "2px 8px", borderRadius: 999, background: typeStyle.bg, color: typeStyle.color }}>
               {TYPE_LABELS[event.type] ?? event.type}
             </span>
             <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "2px 8px", borderRadius: 999, background: statusStyle.bg, color: statusStyle.color }}>
               {event.status}
             </span>
+            {countdown && (
+              <span style={{
+                fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 999,
+                background: countdown.includes("hour") ? "var(--danger-bg)" : "var(--tertiary-soft)",
+                color: countdown.includes("hour") ? "var(--on-danger-soft)" : "oklch(0.42 0.14 70)",
+              }}>
+                {countdown}
+              </span>
+            )}
           </div>
           <div style={{ fontSize: 15, fontWeight: 700, color: "var(--on-surface)", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {event.title}
@@ -122,7 +144,7 @@ function EventRow({ event, onRsvp, onTicket, rsvpd }: { event: OrchidEvent; onRs
           </div>
           {event.capacity > 0 && (() => {
             const pct = Math.min(100, Math.round((event.rsvps / event.capacity) * 100));
-            const barColor = pct >= 90 ? "#dc2626" : pct >= 70 ? "#d97706" : "var(--primary)";
+            const barColor = pct >= 90 ? "var(--danger)" : pct >= 70 ? "var(--warning-text)" : "var(--primary)";
             return (
               <div style={{ marginTop: 8, height: 3, borderRadius: 999, background: "var(--outline-variant, rgba(208,194,213,0.35))", overflow: "hidden" }}>
                 <div style={{ height: "100%", width: `${pct}%`, borderRadius: 999, background: barColor, transition: "width 0.4s ease" }} />
