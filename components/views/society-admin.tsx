@@ -590,7 +590,7 @@ function EventsTab({
             <FieldRow label="Title *">
               <input style={inputStyle} value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder="e.g. Freshers Welcome Night" />
             </FieldRow>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div className="grid-2" style={{ gap: 14 }}>
               <FieldRow label="Event Type">
                 <select style={inputStyle} value={draft.type} onChange={(e) => setDraft({ ...draft, type: e.target.value as EventDraft["type"] })}>
                   <option value="society">Society</option>
@@ -602,7 +602,7 @@ function EventsTab({
                 <input style={inputStyle} type="number" min={1} value={draft.capacity} onChange={(e) => setDraft({ ...draft, capacity: Number(e.target.value) })} />
               </FieldRow>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div className="grid-2" style={{ gap: 14 }}>
               <FieldRow label="Date & Time *">
                 <input style={inputStyle} type="datetime-local" value={draft.startsAt.slice(0, 16)} onChange={(e) => setDraft({ ...draft, startsAt: e.target.value })} />
               </FieldRow>

@@ -1272,6 +1272,39 @@ select,
   }
 }
 
+/* ── Responsive utility grids ──────────────────────────────────────────────── */
+
+/* 2-column field grid — collapses to 1 column at narrow viewports */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+/* Panel layout: fixed nav sidebar + main content */
+.grid-panel {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .grid-panel {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 540px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  /* Event row actions: stack below event info on very narrow screens */
+  .event-row-actions {
+    flex-wrap: wrap;
+  }
+}
+
 /* ── Dark mode overrides for hard-coded light-mode colors ─────────────────── */
 
 [data-theme="dark"] .stitch-topbar {

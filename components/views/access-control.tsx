@@ -121,7 +121,7 @@ export function AccessControl() {
         </p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 20, alignItems: "start" }}>
+      <div className="grid-panel">
         {/* Role selector */}
         <div className="stitch-card" style={{ padding: 16 }}>
           <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 10 }}>

@@ -104,7 +104,7 @@ function SocietiesTab() {
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "start" }}>
+    <div className="grid-2" style={{ gap: 20, alignItems: "start" }}>
       <div className="stitch-card" style={{ padding: 24 }}>
         <h3 style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 20 }}>Register New Society</h3>
         {status && <StatusBanner status={status.type} message={status.msg} />}
@@ -214,7 +214,7 @@ function EventsTab() {
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "start" }}>
+    <div className="grid-2" style={{ gap: 20, alignItems: "start" }}>
       <div className="stitch-card" style={{ padding: 24 }}>
         <h3 style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 20 }}>Create Event</h3>
         {status && <StatusBanner status={status.type} message={status.msg} />}
@@ -314,7 +314,7 @@ function ResourcesTab() {
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "start" }}>
+    <div className="grid-2" style={{ gap: 20, alignItems: "start" }}>
       <div className="stitch-card" style={{ padding: 24 }}>
         <h3 style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 20 }}>Publish Resource</h3>
         {status && <StatusBanner status={status.type} message={status.msg} />}
@@ -397,7 +397,7 @@ function ForumsTab() {
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "start" }}>
+    <div className="grid-2" style={{ gap: 20, alignItems: "start" }}>
       <div className="stitch-card" style={{ padding: 24 }}>
         <h3 style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 20 }}>Create Forum Board</h3>
         {status && <StatusBanner status={status.type} message={status.msg} />}
