@@ -926,10 +926,36 @@ function MembersTab({
 
       {isCommittee && (
         <div className="stitch-card" style={{ padding: 20, marginTop: 16 }}>
-          <h4 style={{ fontSize: 13, fontWeight: 700, color: "var(--on-surface)", marginBottom: 12 }}>Admin Actions</h4>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-            <button type="button" className="stitch-secondary" onClick={() => announce("Share your society page link with prospective members.")}>
-              <Plus size={14} /> Invite Member
+          <h4 style={{ fontSize: 13, fontWeight: 700, color: "var(--on-surface)", marginBottom: 4 }}>Invite Members</h4>
+          <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 12, marginTop: 0 }}>
+            Share this link with new members — they can sign up and join your society from the directory.
+          </p>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <code style={{
+              flex: "1 1 200px",
+              fontSize: 11,
+              padding: "8px 12px",
+              borderRadius: 8,
+              background: "var(--surface-container)",
+              color: "var(--on-surface)",
+              border: "1px solid var(--outline-variant, rgba(208,194,213,0.4))",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              display: "block",
+            }}>
+              {typeof window !== "undefined" ? `${window.location.origin}/register?society=${society.id}` : `/register?society=${society.id}`}
+            </code>
+            <button
+              type="button"
+              className="stitch-secondary"
+              style={{ fontSize: 12, flexShrink: 0 }}
+              onClick={() => {
+                const link = `${window.location.origin}/register?society=${society.id}`;
+                navigator.clipboard.writeText(link).then(() => announce("Invite link copied to clipboard!")).catch(() => announce("Could not copy — please copy the link manually."));
+              }}
+            >
+              Copy Link
             </button>
           </div>
         </div>
