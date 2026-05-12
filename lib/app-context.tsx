@@ -53,6 +53,7 @@ type AppState = {
   setCurrentUser: (profile: Profile) => void;
   currentSocietyId: string | null;
   viewSociety: (id: string) => void;
+  editSociety: (id: string) => void;
   localSocieties: Society[];
   setLocalSocieties: (value: Society[]) => void;
   updateSociety: (id: string, patch: Partial<Society>) => void;
@@ -142,6 +143,11 @@ export function AppProvider({
     setView("society-detail");
   }
 
+  function editSociety(id: string) {
+    setCurrentSocietyId(id);
+    setView("society-admin");
+  }
+
   function updateSociety(id: string, patch: Partial<Society>) {
     setLocalSocieties((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
   }
@@ -165,7 +171,7 @@ export function AppProvider({
   }
 
   return (
-    <AppContext.Provider value={{ view, setView, toast, announce, viewAs, setViewAs, rsvpdEventIds, setRsvpdEventIds, joinedSociety, setJoinedSociety, claimStatuses, setClaimStatuses, localClaims, setLocalClaims, localEvents, setLocalEvents, localForums, setLocalForums, localResources, setLocalResources, threads, setThreads, currentUser, setCurrentUser, currentSocietyId, viewSociety, localSocieties, setLocalSocieties, updateSociety, permissions, setPermission, can }}>
+    <AppContext.Provider value={{ view, setView, toast, announce, viewAs, setViewAs, rsvpdEventIds, setRsvpdEventIds, joinedSociety, setJoinedSociety, claimStatuses, setClaimStatuses, localClaims, setLocalClaims, localEvents, setLocalEvents, localForums, setLocalForums, localResources, setLocalResources, threads, setThreads, currentUser, setCurrentUser, currentSocietyId, viewSociety, editSociety, localSocieties, setLocalSocieties, updateSociety, permissions, setPermission, can }}>
       {children}
     </AppContext.Provider>
   );

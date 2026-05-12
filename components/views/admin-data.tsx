@@ -56,7 +56,7 @@ function StatusBanner({ status, message }: { status: "success" | "error"; messag
 // ── Societies Tab ─────────────────────────────────────────────────────────────
 
 function SocietiesTab() {
-  const { localSocieties, setLocalSocieties, announce } = useApp();
+  const { localSocieties, setLocalSocieties, announce, editSociety } = useApp();
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ type: "success" | "error"; msg: string } | null>(null);
   const [form, setForm] = useState({
@@ -155,6 +155,13 @@ function SocietiesTab() {
                   <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "3px 8px", borderRadius: 999, background: s.status === "active" ? "var(--secondary-container)" : "var(--surface-container)", color: s.status === "active" ? "var(--on-secondary-container)" : "var(--muted)" }}>
                     {s.status}
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => editSociety(s.id)}
+                    style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 6, border: "1.5px solid var(--primary)", background: "none", color: "var(--primary)", cursor: "pointer" }}
+                  >
+                    Edit
+                  </button>
                 </div>
               );
             })}

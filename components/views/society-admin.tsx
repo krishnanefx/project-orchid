@@ -84,13 +84,16 @@ const textareaStyle: React.CSSProperties = {
 };
 
 export function SocietyAdmin() {
-  const { setView, currentUser, localSocieties, updateSociety, announce } = useApp();
+  const { setView, currentUser, currentSocietyId, localSocieties, updateSociety, announce } = useApp();
   const [tab, setTab] = useState<Tab>("profile");
   const [saving, setSaving] = useState(false);
 
-  const society = localSocieties.find((s) => s.id === currentUser.societyId);
-  const university = universities.find((u) => u.id === society?.universityId);
   const isPrivileged = currentUser.role === "super_admin" || currentUser.role === "ukssc_staff";
+  // Privileged users (staff/super admin) can admin any society navigated to via editSociety().
+  // Regular society admins only see the society linked to their profile.
+  const societyId = (isPrivileged && currentSocietyId) ? currentSocietyId : currentUser.societyId;
+  const society = localSocieties.find((s) => s.id === societyId);
+  const university = universities.find((u) => u.id === society?.universityId);
   const isCommittee = society
     ? isPrivileged || society.committee.some(
         (entry) => entry.split("|")[0].trim().toLowerCase() === currentUser.name.toLowerCase()
