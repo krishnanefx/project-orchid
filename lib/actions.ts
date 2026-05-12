@@ -423,9 +423,30 @@ export async function getEventRsvpsAction(eventId: string): Promise<{ id: string
 
 export async function checkInAction(eventId: string): Promise<void> {
   const supabase = await createClient();
-  const { data: ev } = await supabase.from("events").select("checked_in").eq("id", eventId).single();
-  const current = ((ev as Record<string, unknown>)?.checked_in as number) ?? 0;
-  await supabase.from("events").update({ checked_in: current + 1 }).eq("id", eventId);
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const { data: ev, error: selectError } = await supabase
+      .from("events")
+      .select("checked_in")
+      .eq("id", eventId)
+      .single();
+
+    if (selectError) throw new Error(selectError.message);
+
+    const current = ((ev as Record<string, unknown>)?.checked_in as number) ?? 0;
+    const { data: updated, error: updateError } = await supabase
+      .from("events")
+      .update({ checked_in: current + 1 })
+      .eq("id", eventId)
+      .eq("checked_in", current)
+      .select("id")
+      .limit(1);
+
+    if (updateError) throw new Error(updateError.message);
+    if ((updated ?? []).length > 0) return;
+  }
+
+  throw new Error("Failed to check in due to a concurrent update. Please try again.");
 }
 
 export async function updateEventStatusAction(
