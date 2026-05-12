@@ -79,6 +79,15 @@ function EventRow({ event, onRsvp, onTicket, rsvpd }: { event: OrchidEvent; onRs
               <span style={{ color: "#856404", fontWeight: 600 }}>Only {spotsLeft} left</span>
             )}
           </div>
+          {event.capacity > 0 && (() => {
+            const pct = Math.min(100, Math.round((event.rsvps / event.capacity) * 100));
+            const barColor = pct >= 90 ? "#dc2626" : pct >= 70 ? "#d97706" : "var(--primary)";
+            return (
+              <div style={{ marginTop: 8, height: 3, borderRadius: 999, background: "var(--outline-variant, rgba(208,194,213,0.35))", overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${pct}%`, borderRadius: 999, background: barColor, transition: "width 0.4s ease" }} />
+              </div>
+            );
+          })()}
         </div>
 
         {/* Actions */}

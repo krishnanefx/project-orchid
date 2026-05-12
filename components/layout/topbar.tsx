@@ -7,7 +7,7 @@ import { navItems } from "@/components/layout/sidebar";
 import { universities } from "@/lib/data";
 
 export function TopBar() {
-  const { view, setView, currentUser, localSocieties, localEvents, localClaims, localForums, viewSociety, can } = useApp();
+  const { view, setView, currentUser, localSocieties, localEvents, localClaims, localForums, localResources, viewSociety, can } = useApp();
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
@@ -74,6 +74,14 @@ export function TopBar() {
     ? localEvents.filter((e) => e.title.toLowerCase().includes(q) || e.location.toLowerCase().includes(q)).slice(0, 3)
     : [];
 
+  const forumResults = showResults
+    ? localForums.filter((f) => f.name.toLowerCase().includes(q)).slice(0, 2)
+    : [];
+
+  const resourceResults = showResults
+    ? localResources.filter((r) => r.title.toLowerCase().includes(q) || r.body?.toLowerCase().includes(q)).slice(0, 2)
+    : [];
+
   function handleSocietyClick(id: string) {
     setQuery("");
     inputRef.current?.blur();
@@ -86,7 +94,7 @@ export function TopBar() {
     setView("events");
   }
 
-  const hasResults = societyResults.length > 0 || eventResults.length > 0;
+  const hasResults = societyResults.length > 0 || eventResults.length > 0 || forumResults.length > 0 || resourceResults.length > 0;
 
   return (
     <header className="stitch-topbar">
@@ -170,6 +178,55 @@ export function TopBar() {
                   >
                     <div style={{ fontSize: 13, fontWeight: 600, color: "var(--on-surface)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.title}</div>
                     <div style={{ fontSize: 11, color: "var(--muted)", flexShrink: 0 }}>{e.location}</div>
+                  </button>
+                ))}
+              </>
+            )}
+            {forumResults.length > 0 && (
+              <>
+                <div style={{ padding: "8px 12px 4px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted)", borderTop: "1px solid var(--outline-variant, rgba(208,194,213,0.3))" }}>
+                  Forums
+                </div>
+                {forumResults.map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onMouseDown={() => { setQuery(""); inputRef.current?.blur(); setView("forums"); }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      width: "100%", padding: "8px 12px", border: "none", background: "none",
+                      cursor: "pointer", textAlign: "left",
+                    }}
+                    onMouseEnter={(ev) => (ev.currentTarget.style.background = "var(--primary-soft)")}
+                    onMouseLeave={(ev) => (ev.currentTarget.style.background = "none")}
+                  >
+                    <ChatCircleText size={14} style={{ color: "var(--muted)", flexShrink: 0 }} />
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--on-surface)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</div>
+                    <div style={{ fontSize: 11, color: "var(--muted)", flexShrink: 0 }}>{f.threads} threads</div>
+                  </button>
+                ))}
+              </>
+            )}
+            {resourceResults.length > 0 && (
+              <>
+                <div style={{ padding: "8px 12px 4px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted)", borderTop: "1px solid var(--outline-variant, rgba(208,194,213,0.3))" }}>
+                  Resources
+                </div>
+                {resourceResults.map((r) => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onMouseDown={() => { setQuery(""); inputRef.current?.blur(); setView("resources"); }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      width: "100%", padding: "8px 12px", border: "none", background: "none",
+                      cursor: "pointer", textAlign: "left",
+                    }}
+                    onMouseEnter={(ev) => (ev.currentTarget.style.background = "var(--primary-soft)")}
+                    onMouseLeave={(ev) => (ev.currentTarget.style.background = "none")}
+                  >
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--on-surface)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</div>
+                    <div style={{ fontSize: 11, color: "var(--muted)", flexShrink: 0, textTransform: "capitalize" }}>{r.category}</div>
                   </button>
                 ))}
               </>
