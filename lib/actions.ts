@@ -459,11 +459,11 @@ export async function verifyMemberAction(userId: string): Promise<void> {
 
 // ── Event RSVPs ───────────────────────────────────────────────────────────────
 
-export async function getEventRsvpsAction(eventId: string): Promise<{ id: string; name: string; email: string }[]> {
+export async function getEventRsvpsAction(eventId: string): Promise<{ id: string; name: string; email: string; checkedIn?: boolean }[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("event_rsvps")
-    .select("profile_id, profiles(id, full_name, email)")
+    .select("profile_id, checked_in, profiles(id, full_name, email)")
     .eq("event_id", eventId)
     .limit(200);
   return (data ?? []).map((row) => {
@@ -473,8 +473,24 @@ export async function getEventRsvpsAction(eventId: string): Promise<{ id: string
       id: (profile?.id ?? r.profile_id) as string,
       name: ((profile?.full_name ?? "") as string) || "Member",
       email: (profile?.email ?? "") as string,
+      checkedIn: !!(r.checked_in),
     };
   });
+}
+
+export async function checkInAttendeeAction(eventId: string, profileId: string, checkedIn: boolean): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("event_rsvps")
+    .update({ checked_in: checkedIn })
+    .eq("event_id", eventId)
+    .eq("profile_id", profileId);
+  if (error) throw new Error(error.message);
+  // Also update the event's global checked_in count
+  const { data: ev } = await supabase.from("events").select("checked_in").eq("id", eventId).single();
+  const current = ((ev as Record<string, unknown>)?.checked_in as number) ?? 0;
+  const next = checkedIn ? current + 1 : Math.max(0, current - 1);
+  await supabase.from("events").update({ checked_in: next }).eq("id", eventId);
 }
 
 export async function checkInAction(eventId: string): Promise<void> {
