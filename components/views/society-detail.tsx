@@ -106,9 +106,19 @@ export function SocietyDetail() {
             <div className="meta-row compact" style={{ marginBottom: 12 }}>
               {university && <span><MapPin size={14} /> {university.name}</span>}
               <span><UsersThree size={14} /> {society.members} members</span>
+              {society.foundedYear && <span>Est. {society.foundedYear}</span>}
             </div>
+            {(society.tags ?? []).length > 0 && (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+                {(society.tags ?? []).map((tag) => (
+                  <span key={tag} style={{ fontSize: 11, fontWeight: 600, padding: "2px 10px", borderRadius: 999, background: "var(--surface-container)", color: "var(--muted)" }}>
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
             <p style={{ color: "var(--muted)", fontSize: 14, lineHeight: 1.6, margin: 0 }}>
-              {society.description}
+              {society.bio || society.description}
             </p>
           </div>
           <button
