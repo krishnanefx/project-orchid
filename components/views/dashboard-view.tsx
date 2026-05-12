@@ -1,7 +1,7 @@
 "use client";
 
-import { CalendarBlank, ChatCircleText, CurrencyGbp, IdentificationCard, MapPin, QrCode, Storefront, UsersThree } from "@phosphor-icons/react";
-import { useState } from "react";
+import { CalendarBlank, ChatCircleText, CurrencyGbp, IdentificationCard, MapPin, MegaphoneSimple, QrCode, Storefront, UsersThree, X } from "@phosphor-icons/react";
+import { useEffect, useState } from "react";
 import { useApp } from "@/lib/app-context";
 import { universities } from "@/lib/data";
 import { PageHeader, Thread } from "@/components/ui/primitives";
@@ -29,10 +29,30 @@ const CLAIM_STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   paid: { bg: "var(--surface-container)", color: "var(--muted)" },
 };
 
+const DISMISSED_KEY = "orchid-dismissed-announcements";
+
 export function DashboardView() {
-  const { rsvpdEventIds, setRsvpdEventIds, setLocalEvents, threads, announce, setView, currentUser, localEvents, localSocieties, localForums, localClaims, claimStatuses, viewSociety } = useApp();
+  const { rsvpdEventIds, setRsvpdEventIds, setLocalEvents, threads, announce, setView, currentUser, localEvents, localSocieties, localForums, localClaims, claimStatuses, viewSociety, localResources } = useApp();
   const firstName = currentUser.name.split(" ")[0];
   const [ticketEvent, setTicketEvent] = useState<OrchidEvent | null>(null);
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(DISMISSED_KEY);
+      if (stored) setDismissedIds(new Set(JSON.parse(stored)));
+    } catch { /* ignore */ }
+  }, []);
+
+  function dismissAnnouncement(id: string) {
+    const next = new Set(dismissedIds).add(id);
+    setDismissedIds(next);
+    try { localStorage.setItem(DISMISSED_KEY, JSON.stringify([...next])); } catch { /* ignore */ }
+  }
+
+  const latestAnnouncement = localResources
+    .filter((r) => r.category === "announcement" && !dismissedIds.has(r.id))
+    .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))[0] ?? null;
 
   const now = new Date().toISOString();
   const upcomingEvents = localEvents
@@ -63,6 +83,46 @@ export function DashboardView() {
         action="New Post"
         onAction={() => setView("forums")}
       />
+      {/* Latest UKSSC announcement */}
+      {latestAnnouncement && (
+        <div style={{
+          display: "flex", alignItems: "flex-start", gap: 14,
+          padding: "14px 18px", borderRadius: 12, marginBottom: 16,
+          background: "var(--primary-soft)",
+          border: "1px solid oklch(from var(--primary) l c h / 0.2)",
+        }}>
+          <MegaphoneSimple size={18} weight="fill" style={{ color: "var(--primary)", flexShrink: 0, marginTop: 1 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--primary)", marginBottom: 3 }}>
+              UKSSC Announcement
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)", lineHeight: 1.4 }}>
+              {latestAnnouncement.title}
+            </div>
+            {latestAnnouncement.body && (
+              <p style={{ fontSize: 13, color: "var(--muted)", margin: "4px 0 0", lineHeight: 1.5 }}>
+                {latestAnnouncement.body.slice(0, 140)}{latestAnnouncement.body.length > 140 ? "…" : ""}
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={() => setView("resources")}
+              style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: "var(--primary)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+            >
+              Read more in Resources →
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() => dismissAnnouncement(latestAnnouncement.id)}
+            aria-label="Dismiss announcement"
+            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", padding: 2, borderRadius: 4, flexShrink: 0 }}
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
       {/* Profile completion nudge */}
       {currentUser.societyId && (!currentUser.course || !currentUser.year) && (
         <div style={{
