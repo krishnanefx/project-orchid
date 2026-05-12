@@ -6,7 +6,8 @@ const KEY = "orchid-theme";
 
 export function getStoredTheme(): Theme {
   if (typeof window === "undefined") return "light";
-  return (localStorage.getItem(KEY) as Theme) ?? "light";
+  const storedTheme = localStorage.getItem(KEY);
+  return storedTheme === "dark" ? "dark" : "light";
 }
 
 export function applyTheme(theme: Theme) {
