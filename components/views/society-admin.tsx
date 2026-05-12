@@ -22,7 +22,7 @@ import {
 } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/lib/app-context";
-import { checkInAction, createEventAction, createForumBoardAction, deleteEventAction, getEventRsvpsAction, getSocietyMembersAction, updateEventAction, updateEventStatusAction, updateForumBoardAction, updateSocietyAction } from "@/lib/actions";
+import { checkInAction, checkInAttendeeAction, createEventAction, createForumBoardAction, deleteEventAction, getEventRsvpsAction, getSocietyMembersAction, updateEventAction, updateEventStatusAction, updateForumBoardAction, updateSocietyAction } from "@/lib/actions";
 import { downloadCsv } from "@/lib/utils";
 import { universities } from "@/lib/data";
 import type { EventDraft, ForumBoard, OrchidEvent } from "@/lib/types";
@@ -460,7 +460,8 @@ function EventsTab({
   );
   const [showForm, setShowForm] = useState(false);
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
-  const [rsvpLists, setRsvpLists] = useState<Record<string, { id: string; name: string; email: string }[]>>({});
+  const [rsvpLists, setRsvpLists] = useState<Record<string, { id: string; name: string; email: string; checkedIn?: boolean }[]>>({});
+  const [rsvpSearch, setRsvpSearch] = useState<Record<string, string>>({});
   const [loadingRsvps, setLoadingRsvps] = useState<string | null>(null);
   const [checkingIn, setCheckingIn] = useState<string | null>(null);
   const [togglingStatus, setTogglingStatus] = useState<string | null>(null);
@@ -695,21 +696,98 @@ function EventsTab({
                   )}
                 </div>
                 {expandedEventId === event.id && (
-                  <div style={{ borderTop: "1px solid var(--outline-variant, rgba(208,194,213,0.3))", padding: "12px 20px", background: "var(--surface-container, #faf7fb)" }}>
-                    <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted)", marginBottom: 8 }}>
-                      RSVP List
-                    </p>
+                  <div style={{ borderTop: "1px solid var(--outline-variant, rgba(208,194,213,0.3))", padding: "14px 20px 16px", background: "var(--surface-container)" }}>
+                    {/* Header */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
+                      <div>
+                        <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted)" }}>
+                          Attendee Check-in
+                        </span>
+                        {(rsvpLists[event.id] ?? []).length > 0 && (
+                          <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: "var(--secondary)", background: "var(--secondary-container)", padding: "1px 7px", borderRadius: 999 }}>
+                            {(rsvpLists[event.id] ?? []).filter((r) => r.checkedIn).length} / {(rsvpLists[event.id] ?? []).length} present
+                          </span>
+                        )}
+                      </div>
+                      {(rsvpLists[event.id] ?? []).length > 4 && (
+                        <input
+                          value={rsvpSearch[event.id] ?? ""}
+                          onChange={(e) => setRsvpSearch((p) => ({ ...p, [event.id]: e.target.value }))}
+                          placeholder="Search attendee…"
+                          style={{
+                            fontSize: 12, padding: "5px 10px", borderRadius: 7,
+                            border: "1.5px solid var(--outline-variant, rgba(208,194,213,0.5))",
+                            background: "var(--surface-bright)", color: "var(--on-surface)", outline: "none",
+                          }}
+                        />
+                      )}
+                    </div>
                     {loadingRsvps === event.id ? (
                       <p style={{ fontSize: 13, color: "var(--muted)" }}>Loading…</p>
                     ) : (rsvpLists[event.id] ?? []).length === 0 ? (
                       <p style={{ fontSize: 13, color: "var(--muted)" }}>No RSVPs yet.</p>
                     ) : (
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                        {(rsvpLists[event.id] ?? []).map((r) => (
-                          <span key={r.id} style={{ fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 999, background: "var(--primary-soft)", color: "var(--primary)" }}>
-                            {r.name || r.email || "Member"}
-                          </span>
-                        ))}
+                      <div style={{ display: "grid", gap: 6 }}>
+                        {(rsvpLists[event.id] ?? [])
+                          .filter((r) => {
+                            const q = (rsvpSearch[event.id] ?? "").toLowerCase();
+                            return !q || r.name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q);
+                          })
+                          .map((r) => (
+                            <div
+                              key={r.id}
+                              style={{
+                                display: "flex", alignItems: "center", gap: 10,
+                                padding: "7px 10px", borderRadius: 8,
+                                background: r.checkedIn ? "var(--secondary-container)" : "var(--surface-bright)",
+                                border: `1px solid ${r.checkedIn ? "transparent" : "var(--outline-variant, rgba(208,194,213,0.3))"}`,
+                                transition: "background 150ms ease",
+                              }}
+                            >
+                              <div style={{
+                                width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
+                                background: r.checkedIn ? "var(--secondary)" : "var(--surface-container)",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                fontSize: 10, fontWeight: 800,
+                                color: r.checkedIn ? "#fff" : "var(--muted)",
+                              }}>
+                                {r.checkedIn
+                                  ? <CheckCircle size={14} weight="fill" />
+                                  : (r.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() || "?")}
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 12, fontWeight: 600, color: r.checkedIn ? "var(--on-secondary-container)" : "var(--on-surface)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {r.name || "Member"}
+                                </div>
+                                {r.email && <div style={{ fontSize: 11, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.email}</div>}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const next = !r.checkedIn;
+                                  setRsvpLists((prev) => ({
+                                    ...prev,
+                                    [event.id]: (prev[event.id] ?? []).map((a) => a.id === r.id ? { ...a, checkedIn: next } : a),
+                                  }));
+                                  setLocalEvents((prev) => prev.map((e) =>
+                                    e.id === event.id ? { ...e, checkedIn: Math.max(0, e.checkedIn + (next ? 1 : -1)) } : e
+                                  ));
+                                  checkInAttendeeAction(event.id, r.id, next).catch(() =>
+                                    announce("Check-in sync failed — please refresh.")
+                                  );
+                                }}
+                                style={{
+                                  fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 6,
+                                  border: r.checkedIn ? "none" : "1.5px solid var(--primary)",
+                                  background: r.checkedIn ? "none" : "var(--primary-soft)",
+                                  color: r.checkedIn ? "var(--on-secondary-container)" : "var(--primary)",
+                                  cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
+                                }}
+                              >
+                                {r.checkedIn ? "✓ Present" : "Check In"}
+                              </button>
+                            </div>
+                          ))}
                       </div>
                     )}
                   </div>
