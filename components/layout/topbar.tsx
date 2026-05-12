@@ -1,18 +1,86 @@
 "use client";
 
 import { Bell, CalendarBlank, ChatCircleText, CurrencyGbp, List, MagnifyingGlass, Question, X } from "@phosphor-icons/react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/lib/app-context";
 import { navItems } from "@/components/layout/sidebar";
 import { universities } from "@/lib/data";
+
+const SHORTCUTS = [
+  { keys: ["⌘", "K"], label: "Focus search" },
+  { keys: ["/"], label: "Focus search" },
+  { keys: ["G", "D"], label: "Go to Dashboard" },
+  { keys: ["G", "E"], label: "Go to Events" },
+  { keys: ["G", "F"], label: "Go to Forums" },
+  { keys: ["G", "S"], label: "Go to Societies" },
+  { keys: ["G", "C"], label: "Go to Claims" },
+  { keys: ["?"], label: "Show shortcuts" },
+  { keys: ["Esc"], label: "Close panels / Clear search" },
+];
 
 export function TopBar() {
   const { view, setView, currentUser, localSocieties, localEvents, localClaims, localForums, localResources, viewSociety, can } = useApp();
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const bellRef = useRef<HTMLButtonElement>(null);
+  const pendingKey = useRef<string | null>(null);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement).tagName;
+      const inInput = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+
+      // ⌘K / Ctrl+K — focus search
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        inputRef.current?.focus();
+        inputRef.current?.select();
+        return;
+      }
+
+      // "/" — focus search (only when not in an input)
+      if (e.key === "/" && !inInput && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        inputRef.current?.focus();
+        inputRef.current?.select();
+        return;
+      }
+
+      // "?" — open help
+      if (e.key === "?" && !inInput) {
+        setHelpOpen((o) => !o);
+        return;
+      }
+
+      // Esc — clear search / close panels
+      if (e.key === "Escape") {
+        if (query) { setQuery(""); return; }
+        setBellOpen(false);
+        setHelpOpen(false);
+        return;
+      }
+
+      // Two-key navigation: G + letter
+      if (!inInput && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        if (e.key.toLowerCase() === "g") {
+          pendingKey.current = "g";
+          setTimeout(() => { pendingKey.current = null; }, 1000);
+          return;
+        }
+        if (pendingKey.current === "g") {
+          pendingKey.current = null;
+          const nav: Record<string, string> = { d: "dashboard", e: "events", f: "forums", s: "societies", c: "claims" };
+          const dest = nav[e.key.toLowerCase()];
+          if (dest) { e.preventDefault(); setView(dest as Parameters<typeof setView>[0]); }
+        }
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [query, setView]);
 
   const initials = currentUser.name
     .split(" ")
@@ -341,7 +409,68 @@ export function TopBar() {
             </div>
           )}
         </div>
-        <button className="icon-button hide-sm" type="button"><Question size={18} /></button>
+        <div style={{ position: "relative" }}>
+          <button
+            className="icon-button hide-sm"
+            type="button"
+            aria-label="Keyboard shortcuts"
+            onClick={() => setHelpOpen((o) => !o)}
+          >
+            <Question size={18} />
+          </button>
+          {helpOpen && (
+            <div
+              style={{
+                position: "absolute", top: "calc(100% + 8px)", right: 0,
+                width: 280,
+                background: "var(--surface-bright)",
+                border: "1.5px solid var(--outline-variant, rgba(208,194,213,0.4))",
+                borderRadius: 12,
+                boxShadow: "0 8px 30px rgba(0,0,0,0.12)",
+                zIndex: 200,
+                overflow: "hidden",
+              }}
+              onMouseLeave={() => setTimeout(() => setHelpOpen(false), 400)}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px 8px", borderBottom: "1px solid var(--outline-variant, rgba(208,194,213,0.3))" }}>
+                <span style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--on-surface)" }}>
+                  Keyboard Shortcuts
+                </span>
+                <button type="button" onClick={() => setHelpOpen(false)} style={{ border: 0, background: "none", cursor: "pointer", color: "var(--muted)", padding: 2 }}>
+                  <X size={14} />
+                </button>
+              </div>
+              <div style={{ padding: "8px 0 10px" }}>
+                {SHORTCUTS.map((s) => (
+                  <div
+                    key={s.label}
+                    style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      padding: "6px 14px", fontSize: 12,
+                    }}
+                  >
+                    <span style={{ color: "var(--muted)" }}>{s.label}</span>
+                    <div style={{ display: "flex", gap: 3 }}>
+                      {s.keys.map((k) => (
+                        <kbd
+                          key={k}
+                          style={{
+                            fontSize: 11, fontWeight: 700, padding: "2px 6px", borderRadius: 4,
+                            background: "var(--surface-container)",
+                            border: "1px solid var(--outline-variant, rgba(208,194,213,0.5))",
+                            color: "var(--on-surface)", fontFamily: "inherit",
+                          }}
+                        >
+                          {k}
+                        </kbd>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
         <button
           type="button"
           onClick={() => setView("settings")}
