@@ -275,7 +275,10 @@ export async function updateForumBoardAction(id: string, patch: { pinned?: strin
   const update: Record<string, unknown> = {};
   if (patch.pinned !== undefined) update.pinned = patch.pinned;
   if (patch.locked !== undefined) update.locked = patch.locked;
-  await supabase.from("forum_boards").update(update).eq("id", id);
+
+  const { error } = await supabase.from("forum_boards").update(update).eq("id", id);
+
+  if (error) throw new Error(error.message);
 }
 
 // ── Forum Threads ─────────────────────────────────────────────────────────────
