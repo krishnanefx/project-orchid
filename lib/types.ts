@@ -140,8 +140,19 @@ export type ForumThread = {
   title: string;
   body: string;
   authorId: string;
+  authorName?: string;
   pinned: boolean;
   locked: boolean;
+  createdAt: string;
+  replyCount?: number;
+};
+
+export type ForumReply = {
+  id: string;
+  threadId: string;
+  authorId: string;
+  authorName: string;
+  body: string;
   createdAt: string;
 };
 

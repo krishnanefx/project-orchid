@@ -337,6 +337,62 @@ export async function createForumThreadAction(input: {
   };
 }
 
+// ── Forum Replies ─────────────────────────────────────────────────────────────
+
+export async function getForumRepliesAction(threadId: string): Promise<import("@/lib/types").ForumReply[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("forum_replies")
+    .select("id, thread_id, author_id, body, created_at, profiles(name)")
+    .eq("thread_id", threadId)
+    .order("created_at", { ascending: true });
+  if (error) return []; // table may not exist yet — degrade gracefully
+  return (data ?? []).map((r) => {
+    const row = r as Record<string, unknown>;
+    const profile = row.profiles as Record<string, unknown> | null;
+    return {
+      id: row.id as string,
+      threadId: row.thread_id as string,
+      authorId: row.author_id as string,
+      authorName: (profile?.name as string) ?? "Member",
+      body: row.body as string,
+      createdAt: row.created_at as string,
+    };
+  });
+}
+
+export async function createForumReplyAction(input: {
+  threadId: string;
+  authorId: string;
+  authorName: string;
+  body: string;
+}): Promise<import("@/lib/types").ForumReply> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("forum_replies")
+    .insert({ thread_id: input.threadId, author_id: input.authorId, body: input.body })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  const r = data as Record<string, unknown>;
+  // Bump the board's cached reply counter via the thread's board_id
+  const { data: thread } = await supabase.from("forum_threads").select("board_id").eq("id", input.threadId).single();
+  if (thread) {
+    const boardId = (thread as Record<string, unknown>).board_id as string;
+    const { data: board } = await supabase.from("forum_boards").select("replies").eq("id", boardId).single();
+    const currentReplies = ((board as Record<string, unknown>)?.replies as number) ?? 0;
+    await supabase.from("forum_boards").update({ replies: currentReplies + 1 }).eq("id", boardId);
+  }
+  return {
+    id: r.id as string,
+    threadId: input.threadId,
+    authorId: input.authorId,
+    authorName: input.authorName,
+    body: input.body,
+    createdAt: r.created_at as string,
+  };
+}
+
 // ── Society Membership ────────────────────────────────────────────────────────
 
 export async function joinSocietyAction(societyId: string, userId: string): Promise<void> {
