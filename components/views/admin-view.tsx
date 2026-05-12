@@ -160,8 +160,8 @@ export function AdminView() {
           onClick={() => setView("claims")}
           aria-label={`Review reimbursement claims — ${openClaims} pending`}
         >
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: openClaims > 0 ? "#fef3c7" : "var(--primary-soft)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <CurrencyGbp size={20} style={{ color: openClaims > 0 ? "#b45309" : "var(--primary)" }} weight="fill" />
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: openClaims > 0 ? "var(--warning-bg)" : "var(--primary-soft)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <CurrencyGbp size={20} style={{ color: openClaims > 0 ? "var(--warning-text)" : "var(--primary)" }} weight="fill" />
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: "var(--on-surface)", marginBottom: 2 }}>Reimbursement Claims</div>
@@ -170,7 +170,7 @@ export function AdminView() {
             </div>
           </div>
           {openClaims > 0 && (
-            <span style={{ fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 999, background: "#fef3c7", color: "#b45309" }}>
+            <span style={{ fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 999, background: "var(--warning-bg)", color: "var(--warning-text)" }}>
               {openClaims}
             </span>
           )}
