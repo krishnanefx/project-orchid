@@ -239,6 +239,7 @@ export function SocietyAdmin() {
             if (!isCommittee) return;
             updateSociety(society.id, patch);
             announce("Media updated.");
+            updateSocietyAction(society.id, patch).catch(() => announce("Saved locally but failed to sync."));
           }}
         />
       )}
@@ -1172,22 +1173,45 @@ function ForumsTab({
                   </span>
                 )}
                 {isCommittee && (
-                  <button
-                    type="button"
-                    title={board.pinned ? "Edit pinned announcement" : "Add pinned announcement"}
-                    onClick={() => { setEditingPinId(board.id); setPinDraft(board.pinned ?? ""); }}
-                    style={{
-                      background: board.pinned ? "var(--primary-soft)" : "none",
-                      border: "1px solid " + (board.pinned ? "var(--primary)" : "rgba(208,194,213,0.4)"),
-                      borderRadius: 6, padding: "4px 8px", cursor: "pointer",
-                      display: "flex", alignItems: "center", gap: 4,
-                      fontSize: 11, fontWeight: 600,
-                      color: board.pinned ? "var(--primary)" : "var(--muted)",
-                    }}
-                  >
-                    <PushPin size={12} weight={board.pinned ? "fill" : "regular"} />
-                    {board.pinned ? "Pinned" : "Pin"}
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      title={board.locked ? "Unlock board (allow new threads)" : "Lock board (prevent new threads)"}
+                      onClick={() => {
+                        const next = !board.locked;
+                        setLocalForums(localForums.map((b) => b.id === board.id ? { ...b, locked: next } : b));
+                        announce(next ? `"${board.name}" locked.` : `"${board.name}" unlocked.`);
+                        updateForumBoardAction(board.id, { locked: next }).catch(() => announce("Saved locally but failed to sync."));
+                      }}
+                      style={{
+                        background: board.locked ? "#fff3cd" : "none",
+                        border: "1px solid " + (board.locked ? "#d97706" : "rgba(208,194,213,0.4)"),
+                        borderRadius: 6, padding: "4px 8px", cursor: "pointer",
+                        display: "flex", alignItems: "center", gap: 4,
+                        fontSize: 11, fontWeight: 600,
+                        color: board.locked ? "#92400e" : "var(--muted)",
+                      }}
+                    >
+                      <Lock size={12} weight={board.locked ? "fill" : "regular"} />
+                      {board.locked ? "Locked" : "Lock"}
+                    </button>
+                    <button
+                      type="button"
+                      title={board.pinned ? "Edit pinned announcement" : "Add pinned announcement"}
+                      onClick={() => { setEditingPinId(board.id); setPinDraft(board.pinned ?? ""); }}
+                      style={{
+                        background: board.pinned ? "var(--primary-soft)" : "none",
+                        border: "1px solid " + (board.pinned ? "var(--primary)" : "rgba(208,194,213,0.4)"),
+                        borderRadius: 6, padding: "4px 8px", cursor: "pointer",
+                        display: "flex", alignItems: "center", gap: 4,
+                        fontSize: 11, fontWeight: 600,
+                        color: board.pinned ? "var(--primary)" : "var(--muted)",
+                      }}
+                    >
+                      <PushPin size={12} weight={board.pinned ? "fill" : "regular"} />
+                      {board.pinned ? "Pinned" : "Pin"}
+                    </button>
+                  </>
                 )}
               </div>
 
