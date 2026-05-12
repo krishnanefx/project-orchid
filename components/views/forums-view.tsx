@@ -1,6 +1,6 @@
 "use client";
 
-import { CaretDown, CaretUp, PushPin } from "@phosphor-icons/react";
+import { CaretDown, CaretUp, Lock, PushPin } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { useApp } from "@/lib/app-context";
 import { createForumThreadAction, getForumThreadsAction } from "@/lib/actions";
@@ -263,7 +263,14 @@ export function ForumsView() {
           {selectedBoard && (
             <article className="stitch-card" style={{ marginTop: 16 }}>
               <div className="section-row">
-                <h3>{selectedBoard.name}</h3>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <h3 style={{ margin: 0 }}>{selectedBoard.name}</h3>
+                  {selectedBoard.locked && (
+                    <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "2px 8px", borderRadius: 999, background: "#fff3cd", color: "#92400e" }}>
+                      <Lock size={10} weight="fill" /> Locked
+                    </span>
+                  )}
+                </div>
                 <span>{threads.length} thread{threads.length !== 1 ? "s" : ""}</span>
               </div>
               {selectedBoard.pinned && <PinnedBanner message={selectedBoard.pinned} />}
@@ -284,6 +291,12 @@ export function ForumsView() {
           {/* New thread form */}
           <article className="stitch-card" style={{ marginBottom: 16 }}>
             <h3>New Thread</h3>
+            {selectedBoard?.locked && (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 8, background: "#fff3cd", fontSize: 13, color: "#92400e", marginBottom: 12 }}>
+                <Lock size={14} weight="fill" />
+                This board is locked. New threads cannot be posted.
+              </div>
+            )}
             <div className="stitch-form forum-composer">
               <label htmlFor="forum-board">Board</label>
               {localForums.length > 0 ? (
@@ -322,7 +335,7 @@ export function ForumsView() {
                 className="stitch-primary full"
                 type="button"
                 onClick={publishThread}
-                disabled={localForums.length === 0 || publishing}
+                disabled={localForums.length === 0 || publishing || !!(selectedBoard?.locked)}
               >
                 {publishing ? "Publishing…" : "Publish Thread"}
               </button>
