@@ -163,14 +163,14 @@ function ThreadRow({
 
         {/* Title + meta */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3, cursor: "pointer" }} onClick={handleExpand} role="button" tabIndex={0} onKeyDown={(e) => e.key === "Enter" && handleExpand()}>
+          <button type="button" onClick={handleExpand} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3, cursor: "pointer", background: "none", border: "none", padding: 0, textAlign: "left", width: "100%" }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)", lineHeight: 1.3 }}>
               {thread.title}
             </div>
             {thread.pinned && (
               <PushPin size={12} weight="fill" style={{ color: "var(--primary)", flexShrink: 0 }} />
             )}
-          </div>
+          </button>
           <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 11, color: "var(--muted)" }}>
             <span>{timeAgo(thread.createdAt)}</span>
             <button
