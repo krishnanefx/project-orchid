@@ -10,6 +10,8 @@ export type Role =
 export type EventType = "ukssc" | "society" | "cross_society";
 export type ForumVisibility = "open_to_verified_users" | "membership_restricted";
 export type ClaimStatus = "submitted" | "under_review" | "approved" | "rejected" | "paid";
+export type MembershipStatus = "active" | "pending_review" | "committee" | "suspended" | "left" | "alumni_conversion";
+export type BudgetCategory = "events" | "welfare" | "sponsorship" | "operations" | "grants";
 
 export type University = {
   id: string;
@@ -157,12 +159,16 @@ export type ForumBoard = {
 export type ReimbursementClaim = {
   id: string;
   claimant: string;
+  claimantId?: string;
   societyId: string;
   amount: number;
   purpose: string;
   status: ClaimStatus;
   submittedAt: string;
   receiptName: string;
+  receiptPath?: string;
+  reviewerNotes?: string;
+  budgetCategory?: BudgetCategory;
 };
 
 export type Resource = {
@@ -171,6 +177,45 @@ export type Resource = {
   category: "announcement" | "guide" | "article";
   audience: string;
   publishedAt: string;
+  filePath?: string;
+  body?: string;
+};
+
+export type Membership = {
+  id: string;
+  profileId: string;
+  profileName: string;
+  profileEmail: string;
+  profileRole: Role;
+  societyId: string;
+  societyName?: string;
+  membershipRole: "member" | "committee" | "president";
+  status: MembershipStatus;
+  joinedAt: string;
+  leftAt?: string;
+  notes?: string;
+};
+
+export type AuditLog = {
+  id: string;
+  actorId?: string;
+  actorName?: string;
+  action: string;
+  entityType: string;
+  entityId?: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type EventRsvp = {
+  id: string;
+  eventId: string;
+  profileId: string;
+  profileName: string;
+  profileEmail: string;
+  status: "confirmed" | "checked_in" | "waitlisted";
+  checkedInAt?: string;
+  createdAt: string;
 };
 
 export type ForumReply = {

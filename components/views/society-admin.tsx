@@ -27,7 +27,7 @@ import {
   updateSocietyAction,
 } from "@/lib/actions";
 import { universities } from "@/lib/data";
-import type { EventDraft, EventRsvpRow, MemberRow, OrchidEvent, Role } from "@/lib/types";
+import type { EventDraft, EventRsvp, MemberRow, OrchidEvent, Role } from "@/lib/types";
 
 type Tab = "profile" | "events" | "members" | "media";
 
@@ -464,7 +464,7 @@ function EventsTab({
   });
   const [editId, setEditId] = useState<string | null>(null);
   const [checkInEventId, setCheckInEventId] = useState<string | null>(null);
-  const [rsvps, setRsvps] = useState<EventRsvpRow[]>([]);
+  const [rsvps, setRsvps] = useState<EventRsvp[]>([]);
   const [loadingRsvps, setLoadingRsvps] = useState(false);
 
   useEffect(() => {
