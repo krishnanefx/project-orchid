@@ -36,7 +36,9 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 function AppShell() {
-  const { view, toast, viewAs, setViewAs } = useApp();
+  const { view, toast, viewAs, setViewAs, can, currentUser } = useApp();
+  // Roles allowed to reach data-management and access-control sub-views
+  const canManageData = currentUser.role === "super_admin" || currentUser.role === "ukssc_staff";
   return (
     <div className="stitch-app">
       <Sidebar />
@@ -72,19 +74,20 @@ function AppShell() {
         {toast ? <div className="toast" role="status" aria-live="polite">{toast}</div> : null}
         <ErrorBoundary>
           <Suspense fallback={<ViewSkeleton />}>
-            {view === "dashboard" && <DashboardView />}
-            {view === "societies" && <SocietyDirectory />}
+            {view === "dashboard"     && <DashboardView />}
+            {view === "societies"     && can("nav_societies")     && <SocietyDirectory />}
             {view === "society-detail" && <SocietyDetail />}
-            {view === "society-admin" && <SocietyAdmin />}
-            {view === "access-control" && <AccessControl />}
-            {view === "events" && <EventsHub />}
-            {view === "forums" && <ForumsView />}
-            {view === "resources" && <ResourcesView />}
-            {view === "admin" && <AdminView />}
-            {view === "claims" && <ClaimsView />}
-            {view === "admin-data" && <AdminDataView />}
+            {view === "society-admin" && can("nav_society_admin") && <SocietyAdmin />}
+            {/* admin-data + access-control: super_admin / ukssc_staff only — not finance_reviewer */}
+            {view === "access-control" && canManageData && <AccessControl />}
+            {view === "events"        && can("nav_events")        && <EventsHub />}
+            {view === "forums"        && can("nav_forums")        && <ForumsView />}
+            {view === "resources"     && can("nav_resources")     && <ResourcesView />}
+            {view === "admin"         && can("nav_admin")         && <AdminView />}
+            {view === "claims"        && can("submit_claims")     && <ClaimsView />}
+            {view === "admin-data"    && canManageData            && <AdminDataView />}
             {view === "settings"      && <SettingsView />}
-            {view === "checkin-admin" && <CheckinView />}
+            {view === "checkin-admin" && can("nav_admin")         && <CheckinView />}
           </Suspense>
         </ErrorBoundary>
         <Footer />

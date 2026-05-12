@@ -19,7 +19,7 @@ function EventTypePill({ type }: { type: string }) {
 // ── Role-specific panels ──────────────────────────────────────────────────────
 
 function FinanceReviewerPanel() {
-  const { localClaims, setView } = useApp();
+  const { localClaims, navigate } = useApp();
   const pending = localClaims.filter((c) => c.status === "submitted" || c.status === "under_review");
   return (
     <article className="stitch-card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -28,7 +28,7 @@ function FinanceReviewerPanel() {
           <Receipt size={17} weight="fill" style={{ color: "var(--primary)" }} />
           Claims Queue
         </h3>
-        <button type="button" className="stitch-secondary" style={{ fontSize: 12 }} onClick={() => setView("claims")}>
+        <button type="button" className="stitch-secondary" style={{ fontSize: 12 }} onClick={() => navigate("claims")}>
           Review all
         </button>
       </div>
@@ -97,14 +97,14 @@ function SponsorWelcomePanel() {
 }
 
 function SocietyAdminPanel() {
-  const { localSocieties, currentUser, setView } = useApp();
+  const { localSocieties, currentUser, navigate } = useApp();
   const mySociety = localSocieties.find((s) => s.id === currentUser.societyId);
   if (!mySociety) return null;
   return (
     <article className="stitch-card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h3 style={{ margin: 0 }}>Society Quick Actions</h3>
-        <button type="button" className="stitch-secondary" style={{ fontSize: 12 }} onClick={() => setView("society-admin")}>
+        <button type="button" className="stitch-secondary" style={{ fontSize: 12 }} onClick={() => navigate("society-admin")}>
           Manage
         </button>
       </div>
@@ -124,7 +124,7 @@ function SocietyAdminPanel() {
 }
 
 function StaffSummaryPanel() {
-  const { localClaims, localEvents, localSocieties, setView } = useApp();
+  const { localClaims, localEvents, localSocieties, navigate } = useApp();
   const pendingClaims = localClaims.filter((c) => c.status === "submitted").length;
   const upcomingCount = localEvents.filter((e) => e.startsAt > new Date().toISOString()).length;
   const onboardingCount = localSocieties.filter((s) => s.status === "onboarding").length;
@@ -133,7 +133,7 @@ function StaffSummaryPanel() {
     <article className="stitch-card" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
         <h3 style={{ margin: 0 }}>Staff Quick View</h3>
-        <button type="button" className="stitch-secondary" style={{ fontSize: 12 }} onClick={() => setView("admin")}>
+        <button type="button" className="stitch-secondary" style={{ fontSize: 12 }} onClick={() => navigate("admin")}>
           Full admin
         </button>
       </div>
@@ -157,11 +157,12 @@ export function DashboardView() {
   const {
     rsvpdEventIds, setRsvpdEventIds, setLocalEvents,
     threads, announce, currentUser, localEvents,
-    localSocieties, localForums, viewSociety, can,
+    localSocieties, localForums, viewSociety, can, viewAs,
   } = useApp();
 
   const firstName = currentUser.name.split(" ")[0];
-  const role = currentUser.role;
+  // Use viewAs when preview mode is active so role-specific panels reflect the previewed role
+  const role = viewAs ?? currentUser.role;
 
   const now = new Date().toISOString();
   const upcomingEvents = localEvents

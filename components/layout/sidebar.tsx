@@ -54,7 +54,7 @@ const PREVIEW_ROLES: { role: Role; label: string }[] = [
 ];
 
 export function Sidebar() {
-  const { view, setView, currentUser, viewAs, setViewAs, can } = useApp();
+  const { view, setView, navigate, currentUser, viewAs, setViewAs, can } = useApp();
 
   const visibleNavItems = navItems.filter((item) => {
     const feature = NAV_FEATURE_MAP[item.id];
@@ -81,7 +81,7 @@ export function Sidebar() {
           const Icon = item.icon;
           const active = view === item.id;
           return (
-            <button key={item.id} className={`stitch-nav-item ${active ? "active" : ""}`} onClick={() => setView(item.id)} type="button">
+            <button key={item.id} className={`stitch-nav-item ${active ? "active" : ""}`} onClick={() => navigate(item.id)} type="button">
               <Icon size={17} weight={active ? "fill" : "regular"} />
               <span>{item.label}</span>
             </button>
@@ -92,7 +92,7 @@ export function Sidebar() {
       <div style={{ marginTop: "auto", paddingTop: 16, borderTop: "1px solid rgba(208,194,213,0.3)" }}>
         <button
           type="button"
-          onClick={() => setView("settings")}
+          onClick={() => navigate("settings")}
           style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 4px", width: "100%", background: "none", border: "none", cursor: "pointer", borderRadius: 8, textAlign: "left" }}
           aria-label="Open profile settings"
         >
@@ -156,9 +156,9 @@ export function Sidebar() {
           </div>
         )}
         {can("submit_claims") && currentUser.societyId && (
-          <button className="stitch-primary full" onClick={() => setView("claims")} type="button">Submit Reimbursement</button>
+          <button className="stitch-primary full" onClick={() => navigate("claims")} type="button">Submit Reimbursement</button>
         )}
-        <button className="stitch-nav-item" type="button" onClick={() => setView("settings")}><GearSix size={17} /> Settings</button>
+        <button className="stitch-nav-item" type="button" onClick={() => navigate("settings")}><GearSix size={17} /> Settings</button>
         <form action="/api/auth/signout" method="POST" style={{ width: "100%" }}>
           <button className="stitch-nav-item" type="submit" style={{ width: "100%" }}><SignOut size={17} /> Logout</button>
         </form>
