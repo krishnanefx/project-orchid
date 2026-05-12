@@ -22,7 +22,7 @@ import {
 } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/lib/app-context";
-import { checkInAction, createEventAction, createForumBoardAction, getEventRsvpsAction, getSocietyMembersAction, updateEventAction, updateEventStatusAction, updateForumBoardAction, updateSocietyAction } from "@/lib/actions";
+import { checkInAction, createEventAction, createForumBoardAction, deleteEventAction, getEventRsvpsAction, getSocietyMembersAction, updateEventAction, updateEventStatusAction, updateForumBoardAction, updateSocietyAction } from "@/lib/actions";
 import { downloadCsv } from "@/lib/utils";
 import { universities } from "@/lib/data";
 import type { EventDraft, ForumBoard, OrchidEvent } from "@/lib/types";
@@ -556,6 +556,7 @@ function EventsTab({
     setLocalEvents((prev) => prev.filter((e) => e.id !== id));
     setAllEvents(allEvents.filter((e) => e.id !== id));
     announce("Event removed.");
+    deleteEventAction(id).catch(() => announce("Removed locally but failed to sync."));
   }
 
   async function handleStatusToggle(event: OrchidEvent) {

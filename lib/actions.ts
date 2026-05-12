@@ -449,6 +449,11 @@ export async function checkInAction(eventId: string): Promise<void> {
   throw new Error("Failed to check in due to a concurrent update. Please try again.");
 }
 
+export async function deleteEventAction(eventId: string): Promise<void> {
+  const supabase = await createClient();
+  await supabase.from("events").delete().eq("id", eventId);
+}
+
 export async function updateEventStatusAction(
   eventId: string,
   status: "open" | "waitlist" | "closed"
