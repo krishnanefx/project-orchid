@@ -23,9 +23,9 @@ function EventTypePill({ type }: { type: string }) {
 
 const CLAIM_STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   submitted: { bg: "var(--primary-soft)", color: "var(--primary)" },
-  under_review: { bg: "#fff3cd", color: "#856404" },
+  under_review: { bg: "var(--warning-bg)", color: "var(--warning-text)" },
   approved: { bg: "var(--secondary-container)", color: "var(--on-secondary-container)" },
-  rejected: { bg: "#ffe4e4", color: "#c0392b" },
+  rejected: { bg: "var(--danger-bg)", color: "var(--on-danger-soft)" },
   paid: { bg: "var(--surface-container)", color: "var(--muted)" },
 };
 
@@ -131,16 +131,16 @@ export function DashboardView() {
           gap: 14,
           padding: "14px 20px",
           borderRadius: 12,
-          background: "#fff3cd",
+          background: "var(--warning-bg)",
           marginBottom: 20,
           flexWrap: "wrap",
         }}>
-          <IdentificationCard size={22} style={{ color: "#856404", flexShrink: 0 }} weight="fill" />
+          <IdentificationCard size={22} style={{ color: "var(--warning-text)", flexShrink: 0 }} weight="fill" />
           <div style={{ flex: 1, minWidth: 200 }}>
             <p style={{ fontSize: 14, fontWeight: 700, color: "#78350f", margin: "0 0 2px" }}>
               Complete your profile
             </p>
-            <p style={{ fontSize: 13, color: "#92400e", margin: 0 }}>
+            <p style={{ fontSize: 13, color: "var(--warning-text)", margin: 0 }}>
               Add your course and year of study so event organisers can prepare for you.
             </p>
           </div>
@@ -151,7 +151,7 @@ export function DashboardView() {
               flexShrink: 0, fontSize: 13, fontWeight: 700,
               padding: "8px 16px", borderRadius: 8,
               border: "1.5px solid #b45309",
-              background: "rgba(255,255,255,0.6)", color: "#92400e",
+              background: "rgba(255,255,255,0.6)", color: "var(--warning-text)",
               cursor: "pointer",
             }}
           >

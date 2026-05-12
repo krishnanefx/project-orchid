@@ -23,6 +23,10 @@
   --secondary-soft: #aeeecb;
   --tertiary-soft: #ffdf9a;
   --danger: #ba1a1a;
+  --warning-bg: #fff8e6;
+  --warning-text: #7c5c00;
+  --danger-bg: #ffe4e4;
+  --on-danger-soft: #b91c1c;
   --shadow: 0 8px 24px rgba(157, 78, 221, 0.06);
   --shadow-hover: 0 12px 32px rgba(157, 78, 221, 0.12);
 }
@@ -52,6 +56,10 @@
   --secondary-soft: oklch(0.28 0.07 175);
   --tertiary-soft: oklch(0.3 0.07 70);
   --danger: oklch(0.72 0.18 25);
+  --warning-bg: oklch(0.28 0.06 70);
+  --warning-text: oklch(0.88 0.14 70);
+  --danger-bg: oklch(0.22 0.06 25);
+  --on-danger-soft: oklch(0.82 0.18 25);
   --shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
   --shadow-hover: 0 12px 32px rgba(0, 0, 0, 0.45);
 }

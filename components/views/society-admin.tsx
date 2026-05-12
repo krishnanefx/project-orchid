@@ -39,7 +39,7 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ size?: number;
 
 const EVENT_STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   open: { bg: "var(--secondary-container)", color: "var(--on-secondary-container)" },
-  waitlist: { bg: "#fff3cd", color: "#856404" },
+  waitlist: { bg: "var(--warning-bg)", color: "var(--warning-text)" },
   closed: { bg: "var(--surface-container)", color: "var(--muted)" }
 };
 
@@ -159,7 +159,7 @@ export function SocietyAdmin() {
               </p>
             </div>
             {!isCommittee && (
-              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#856404", background: "#fff3cd", padding: "6px 12px", borderRadius: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--warning-text)", background: "var(--warning-bg)", padding: "6px 12px", borderRadius: 8 }}>
                 <Warning size={14} />
                 <span>View only — committee access required to edit</span>
               </div>
@@ -1185,12 +1185,12 @@ function ForumsTab({
                         updateForumBoardAction(board.id, { locked: next }).catch(() => announce("Saved locally but failed to sync."));
                       }}
                       style={{
-                        background: board.locked ? "#fff3cd" : "none",
+                        background: board.locked ? "var(--warning-bg)" : "none",
                         border: "1px solid " + (board.locked ? "#d97706" : "rgba(208,194,213,0.4)"),
                         borderRadius: 6, padding: "4px 8px", cursor: "pointer",
                         display: "flex", alignItems: "center", gap: 4,
                         fontSize: 11, fontWeight: 600,
-                        color: board.locked ? "#92400e" : "var(--muted)",
+                        color: board.locked ? "var(--warning-text)" : "var(--muted)",
                       }}
                     >
                       <Lock size={12} weight={board.locked ? "fill" : "regular"} />

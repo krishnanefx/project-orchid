@@ -21,7 +21,7 @@ const CATEGORIES = ["All", "Guide", "Announcement", "Article"] as const;
 
 const CATEGORY_COLORS: Record<string, { bg: string; color: string }> = {
   guide: { bg: "var(--primary-soft)", color: "var(--primary)" },
-  announcement: { bg: "#fff3cd", color: "#856404" },
+  announcement: { bg: "var(--warning-bg)", color: "var(--warning-text)" },
   article: { bg: "var(--secondary-container)", color: "var(--on-secondary-container)" },
 };
 
