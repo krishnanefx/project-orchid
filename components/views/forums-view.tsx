@@ -1,11 +1,11 @@
 "use client";
 
-import { CaretDown, CaretUp, Lock, PushPin } from "@phosphor-icons/react";
-import { useEffect, useState } from "react";
+import { CaretDown, CaretUp, ChatCircle, Lock, PaperPlaneTilt, PushPin } from "@phosphor-icons/react";
+import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/lib/app-context";
-import { createForumThreadAction, getForumThreadsAction } from "@/lib/actions";
+import { createForumReplyAction, createForumThreadAction, getForumRepliesAction, getForumThreadsAction } from "@/lib/actions";
 import { PageHeader, Thread } from "@/components/ui/primitives";
-import type { ForumThread } from "@/lib/types";
+import type { ForumReply, ForumThread } from "@/lib/types";
 
 function PinnedBanner({ message }: { message: string }) {
   return (
@@ -32,16 +32,78 @@ function saveVotes(votes: Record<string, number>) {
   try { localStorage.setItem(VOTES_KEY, JSON.stringify(votes)); } catch { /* ignore */ }
 }
 
-function ThreadRow({ thread, timeAgo }: { thread: ForumThread; timeAgo: (iso: string) => string }) {
+function initials(name: string) {
+  return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() || "?";
+}
+
+function ReplyBubble({ reply, timeAgo }: { reply: ForumReply; timeAgo: (iso: string) => string }) {
+  return (
+    <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+      <div style={{
+        width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
+        background: "var(--surface-container)", display: "flex", alignItems: "center",
+        justifyContent: "center", fontSize: 9, fontWeight: 800, color: "var(--muted)",
+      }}>
+        {initials(reply.authorName)}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 3 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--on-surface)" }}>{reply.authorName}</span>
+          <span style={{ fontSize: 11, color: "var(--muted)" }}>{timeAgo(reply.createdAt)}</span>
+        </div>
+        <p style={{
+          fontSize: 13, color: "var(--on-surface)", margin: 0, lineHeight: 1.65,
+          whiteSpace: "pre-wrap", wordBreak: "break-word",
+        }}>
+          {reply.body}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ThreadRow({
+  thread,
+  timeAgo,
+  currentUserId,
+  currentUserName,
+  boardLocked,
+  onReplyPosted,
+}: {
+  thread: ForumThread;
+  timeAgo: (iso: string) => string;
+  currentUserId: string;
+  currentUserName: string;
+  boardLocked?: boolean;
+  onReplyPosted?: (threadId: string) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
   const [votes, setVotes] = useState<Record<string, number>>({});
+  const [replies, setReplies] = useState<ForumReply[]>([]);
+  const [loadingReplies, setLoadingReplies] = useState(false);
+  const [replyDraft, setReplyDraft] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [replyCount, setReplyCount] = useState(thread.replyCount ?? 0);
+  const replyRef = useRef<HTMLTextAreaElement>(null);
+
   const hasBody = !!(thread.body?.trim());
   const voted = votes[thread.id] === 1;
-  const count = voted ? 1 : 0;
+  const isLocked = boardLocked || thread.locked;
 
   useEffect(() => {
     setVotes(loadVotes());
   }, []);
+
+  async function handleExpand() {
+    if (!expanded && !loadingReplies && replies.length === 0) {
+      setLoadingReplies(true);
+      const loaded = await getForumRepliesAction(thread.id).catch(() => []);
+      setReplies(loaded);
+      setReplyCount(loaded.length);
+      setLoadingReplies(false);
+    }
+    setExpanded((v) => !v);
+  }
 
   function handleVote(e: React.MouseEvent) {
     e.stopPropagation();
@@ -50,9 +112,38 @@ function ThreadRow({ thread, timeAgo }: { thread: ForumThread; timeAgo: (iso: st
     saveVotes(next);
   }
 
+  async function submitReply() {
+    const body = replyDraft.trim();
+    if (!body) return;
+    setSubmitting(true);
+    const optimistic: ForumReply = {
+      id: `reply-${Date.now()}`,
+      threadId: thread.id,
+      authorId: currentUserId,
+      authorName: currentUserName,
+      body,
+      createdAt: new Date().toISOString(),
+    };
+    setReplies((prev) => [...prev, optimistic]);
+    setReplyCount((n) => n + 1);
+    setReplyDraft("");
+    try {
+      const saved = await createForumReplyAction({ threadId: thread.id, authorId: currentUserId, authorName: currentUserName, body });
+      setReplies((prev) => prev.map((r) => r.id === optimistic.id ? saved : r));
+      onReplyPosted?.(thread.id);
+    } catch {
+      // Keep optimistic reply in view but don't cascade
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const voteCount = voted ? 1 : 0;
+
   return (
     <div style={{ borderBottom: "1px solid var(--outline-variant, rgba(208,194,213,0.25))" }}>
       <div style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 0" }}>
+        {/* Upvote */}
         <button
           type="button"
           onClick={handleVote}
@@ -66,19 +157,13 @@ function ThreadRow({ thread, timeAgo }: { thread: ForumThread; timeAgo: (iso: st
         >
           <CaretUp size={13} weight={voted ? "fill" : "regular"} />
           <div style={{ fontSize: 11, fontWeight: 700, lineHeight: 1.2, color: voted ? "var(--primary)" : "var(--on-surface)" }}>
-            {count}
+            {voteCount}
           </div>
         </button>
-        <button
-          type="button"
-          onClick={() => hasBody && setExpanded((v) => !v)}
-          style={{
-            flex: 1, minWidth: 0, textAlign: "left",
-            background: "none", border: "none",
-            cursor: hasBody ? "pointer" : "default", padding: 0,
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+
+        {/* Title + meta */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3, cursor: "pointer" }} onClick={handleExpand} role="button" tabIndex={0} onKeyDown={(e) => e.key === "Enter" && handleExpand()}>
             <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)", lineHeight: 1.3 }}>
               {thread.title}
             </div>
@@ -86,24 +171,97 @@ function ThreadRow({ thread, timeAgo }: { thread: ForumThread; timeAgo: (iso: st
               <PushPin size={12} weight="fill" style={{ color: "var(--primary)", flexShrink: 0 }} />
             )}
           </div>
-          <div style={{ fontSize: 11, color: "var(--muted)" }}>
-            {timeAgo(thread.createdAt)}
-            {hasBody && !expanded && (
-              <> · <span style={{ color: "var(--primary)" }}>read more</span></>
-            )}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 11, color: "var(--muted)" }}>
+            <span>{timeAgo(thread.createdAt)}</span>
+            <button
+              type="button"
+              onClick={handleExpand}
+              style={{ display: "flex", alignItems: "center", gap: 3, background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: 11, color: "var(--primary)", fontWeight: 600 }}
+            >
+              <ChatCircle size={12} weight={expanded ? "fill" : "regular"} />
+              {replyCount > 0 ? `${replyCount} ${replyCount === 1 ? "reply" : "replies"}` : "Reply"}
+            </button>
           </div>
+        </div>
+
+        {/* Expand caret */}
+        <button
+          type="button"
+          onClick={handleExpand}
+          aria-label={expanded ? "Collapse thread" : "Expand thread"}
+          style={{ color: "var(--muted)", flexShrink: 0, background: "none", border: "none", cursor: "pointer", padding: "2px 0" }}
+        >
+          {expanded ? <CaretUp size={13} /> : <CaretDown size={13} />}
         </button>
-        {hasBody && (
-          <div style={{ color: "var(--muted)", flexShrink: 0, paddingTop: 2 }}>
-            {expanded ? <CaretUp size={13} /> : <CaretDown size={13} />}
-          </div>
-        )}
       </div>
-      {expanded && hasBody && (
-        <div style={{ padding: "0 0 14px 40px" }}>
-          <p style={{ fontSize: 14, color: "var(--on-surface)", lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap" }}>
-            {thread.body}
-          </p>
+
+      {expanded && (
+        <div style={{ padding: "0 0 16px 40px", display: "flex", flexDirection: "column", gap: 12 }}>
+          {/* Thread body */}
+          {hasBody && (
+            <p style={{ fontSize: 14, color: "var(--on-surface)", lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap" }}>
+              {thread.body}
+            </p>
+          )}
+
+          {/* Replies */}
+          {loadingReplies ? (
+            <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>Loading replies…</p>
+          ) : replies.length > 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, borderLeft: "2px solid var(--outline-variant)", paddingLeft: 12 }}>
+              {replies.map((r) => (
+                <ReplyBubble key={r.id} reply={r} timeAgo={timeAgo} />
+              ))}
+            </div>
+          ) : (
+            !isLocked && (
+              <p style={{ fontSize: 12, color: "var(--muted)", margin: 0, fontStyle: "italic" }}>No replies yet — be the first.</p>
+            )
+          )}
+
+          {/* Reply input */}
+          {!isLocked && (
+            <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+              <textarea
+                ref={replyRef}
+                value={replyDraft}
+                onChange={(e) => setReplyDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submitReply(); }}
+                placeholder="Write a reply… (⌘↵ to send)"
+                rows={2}
+                style={{
+                  flex: 1, fontSize: 13, padding: "8px 10px", borderRadius: 8,
+                  border: "1.5px solid var(--outline-variant, rgba(208,194,213,0.5))",
+                  background: "var(--surface-bright)", color: "var(--on-surface)",
+                  resize: "vertical", fontFamily: "inherit", outline: "none",
+                  lineHeight: 1.5,
+                }}
+              />
+              <button
+                type="button"
+                onClick={submitReply}
+                disabled={!replyDraft.trim() || submitting}
+                aria-label="Post reply"
+                style={{
+                  width: 36, height: 36, borderRadius: 8, border: "none", flexShrink: 0,
+                  background: replyDraft.trim() ? "var(--primary)" : "var(--surface-container)",
+                  color: replyDraft.trim() ? "#fff" : "var(--muted)",
+                  cursor: replyDraft.trim() ? "pointer" : "default",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "background 150ms ease",
+                }}
+              >
+                <PaperPlaneTilt size={16} weight="fill" />
+              </button>
+            </div>
+          )}
+
+          {isLocked && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--muted)", fontStyle: "italic" }}>
+              <Lock size={12} />
+              This thread is locked.
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -169,6 +327,17 @@ export function ForumsView() {
     } finally {
       setPublishing(false);
     }
+  }
+
+  function handleReplyPosted(threadId: string) {
+    // Bump the board's reply count in local state
+    setLocalForums(localForums.map((f) =>
+      f.id === selectedBoardId ? { ...f, replies: f.replies + 1 } : f
+    ));
+    // Update replyCount on the specific thread
+    setThreads((prev) => prev.map((t) =>
+      t.id === threadId ? { ...t, replyCount: (t.replyCount ?? 0) + 1 } : t
+    ));
   }
 
   const selectedBoard = localForums.find((f) => f.id === selectedBoardId) ?? null;
@@ -277,10 +446,22 @@ export function ForumsView() {
               {loadingThreads ? (
                 <p style={{ color: "var(--muted)", fontSize: 13, padding: "8px 0" }}>Loading…</p>
               ) : threads.length === 0 ? (
-                <p style={{ color: "var(--muted)", fontSize: 13, padding: "8px 0" }}>No threads yet. Be the first to post!</p>
+                <div style={{ padding: "20px 0", textAlign: "center" }}>
+                  <div style={{ fontSize: 28, marginBottom: 8 }}>💬</div>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "var(--on-surface)", margin: "0 0 4px" }}>No threads yet</p>
+                  <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>Start the conversation using the form.</p>
+                </div>
               ) : (
                 threads.map((t) => (
-                  <ThreadRow key={t.id} thread={t} timeAgo={timeAgo} />
+                  <ThreadRow
+                    key={t.id}
+                    thread={t}
+                    timeAgo={timeAgo}
+                    currentUserId={currentUser.id ?? ""}
+                    currentUserName={currentUser.name}
+                    boardLocked={selectedBoard.locked}
+                    onReplyPosted={handleReplyPosted}
+                  />
                 ))
               )}
             </article>
