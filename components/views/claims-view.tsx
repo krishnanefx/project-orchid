@@ -21,9 +21,9 @@ type StatusFilter = typeof STATUS_FILTER_OPTIONS[number];
 
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   submitted: { bg: "var(--primary-soft)", color: "var(--primary)" },
-  under_review: { bg: "#fff3cd", color: "#856404" },
+  under_review: { bg: "var(--warning-bg)", color: "var(--warning-text)" },
   approved: { bg: "var(--secondary-container)", color: "var(--on-secondary-container)" },
-  rejected: { bg: "#ffe4e4", color: "#c0392b" },
+  rejected: { bg: "var(--danger-bg)", color: "var(--on-danger-soft)" },
   paid: { bg: "var(--surface-container)", color: "var(--muted)" },
 };
 

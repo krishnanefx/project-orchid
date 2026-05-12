@@ -17,12 +17,12 @@ const TYPE_LABELS: Record<string, string> = {
 const TYPE_COLORS: Record<string, { bg: string; color: string }> = {
   ukssc: { bg: "var(--primary-soft)", color: "var(--primary)" },
   society: { bg: "var(--secondary-container)", color: "var(--on-secondary-container)" },
-  cross_society: { bg: "#fff3cd", color: "#856404" },
+  cross_society: { bg: "var(--warning-bg)", color: "var(--warning-text)" },
 };
 
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   open: { bg: "var(--secondary-container)", color: "var(--on-secondary-container)" },
-  waitlist: { bg: "#fff3cd", color: "#856404" },
+  waitlist: { bg: "var(--warning-bg)", color: "var(--warning-text)" },
   closed: { bg: "var(--surface-container)", color: "var(--muted)" },
 };
 
@@ -117,7 +117,7 @@ function EventRow({ event, onRsvp, onTicket, rsvpd }: { event: OrchidEvent; onRs
             <span><MapPin size={12} style={{ display: "inline", verticalAlign: "middle" }} /> {event.location}</span>
             <span><UsersThree size={12} style={{ display: "inline", verticalAlign: "middle" }} /> {event.rsvps}/{event.capacity}</span>
             {spotsLeft > 0 && spotsLeft <= 20 && (
-              <span style={{ color: "#856404", fontWeight: 600 }}>Only {spotsLeft} left</span>
+              <span style={{ color: "var(--warning-text)", fontWeight: 600 }}>Only {spotsLeft} left</span>
             )}
           </div>
           {event.capacity > 0 && (() => {

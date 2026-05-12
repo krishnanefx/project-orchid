@@ -39,7 +39,7 @@ function StatusBanner({ status, message }: { status: "success" | "error"; messag
       padding: "12px 16px",
       borderRadius: 10,
       background: status === "success" ? "var(--secondary-container)" : "#fff0f0",
-      color: status === "success" ? "var(--on-secondary-container)" : "#c0392b",
+      color: status === "success" ? "var(--on-secondary-container)" : "var(--on-danger-soft)",
       fontSize: 13,
       fontWeight: 600,
       marginBottom: 16,

@@ -266,7 +266,7 @@ export function ForumsView() {
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <h3 style={{ margin: 0 }}>{selectedBoard.name}</h3>
                   {selectedBoard.locked && (
-                    <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "2px 8px", borderRadius: 999, background: "#fff3cd", color: "#92400e" }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "2px 8px", borderRadius: 999, background: "var(--warning-bg)", color: "var(--warning-text)" }}>
                       <Lock size={10} weight="fill" /> Locked
                     </span>
                   )}
@@ -292,7 +292,7 @@ export function ForumsView() {
           <article className="stitch-card" style={{ marginBottom: 16 }}>
             <h3>New Thread</h3>
             {selectedBoard?.locked && (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 8, background: "#fff3cd", fontSize: 13, color: "#92400e", marginBottom: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 8, background: "var(--warning-bg)", fontSize: 13, color: "var(--warning-text)", marginBottom: 12 }}>
                 <Lock size={14} weight="fill" />
                 This board is locked. New threads cannot be posted.
               </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, CheckCircle, DownloadSimple, MagnifyingGlass, ShieldCheck } from "@phosphor-icons/react";
+import { ArrowLeft, CheckCircle, DownloadSimple, MagnifyingGlass, ShieldCheck, ShieldCheckered } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { useApp } from "@/lib/app-context";
 import { getProfilesAction, updateMemberRoleAction, verifyMemberAction } from "@/lib/actions";
@@ -24,7 +24,7 @@ const ROLE_COLORS: Record<string, { bg: string; color: string }> = {
   super_admin: { bg: "oklch(0.92 0.06 295)", color: "oklch(0.42 0.18 295)" },
   ukssc_staff: { bg: "var(--primary-soft)", color: "var(--primary)" },
   society_admin: { bg: "var(--secondary-container)", color: "var(--on-secondary-container)" },
-  finance_reviewer: { bg: "#fff3cd", color: "#856404" },
+  finance_reviewer: { bg: "var(--warning-bg)", color: "var(--warning-text)" },
   student_member: { bg: "var(--surface-container)", color: "var(--muted)" },
   alumni: { bg: "var(--surface-container)", color: "var(--muted)" },
   sponsor: { bg: "var(--surface-container)", color: "var(--muted)" },
@@ -34,13 +34,18 @@ function initials(name: string) {
   return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() || "?";
 }
 
+type StatusTab = "all" | "unverified" | "pending_consent";
+
 export function AdminMembers() {
   const { setView, localSocieties, announce } = useApp();
   const [members, setMembers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<Role | "">("");
+  const [uniFilter, setUniFilter] = useState("");
+  const [statusTab, setStatusTab] = useState<StatusTab>("all");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [bulkVerifying, setBulkVerifying] = useState(false);
 
   useEffect(() => {
     getProfilesAction(200)
@@ -53,7 +58,12 @@ export function AdminMembers() {
     const q = search.toLowerCase();
     const matchSearch = !q || m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q);
     const matchRole = !roleFilter || m.role === roleFilter;
-    return matchSearch && matchRole;
+    const matchUni = !uniFilter || m.universityId === uniFilter;
+    const matchStatus =
+      statusTab === "all" ? true :
+      statusTab === "unverified" ? !m.verified :
+      m.consentStatus !== "accepted";
+    return matchSearch && matchRole && matchUni && matchStatus;
   });
 
   async function handleRoleChange(userId: string, role: Role) {
@@ -79,6 +89,24 @@ export function AdminMembers() {
       announce("Failed to verify — please try again.");
     } finally {
       setUpdatingId(null);
+    }
+  }
+
+  async function handleBulkVerify() {
+    const targets = filtered.filter((m) => !m.verified);
+    if (!targets.length) return;
+    setBulkVerifying(true);
+    // Optimistic update
+    setMembers((prev) => prev.map((m) => targets.find((t) => t.id === m.id) ? { ...m, verified: true } : m));
+    let failed = 0;
+    await Promise.all(targets.map((m) =>
+      verifyMemberAction(m.id).catch(() => { failed++; })
+    ));
+    setBulkVerifying(false);
+    if (failed > 0) {
+      announce(`${targets.length - failed} verified, ${failed} failed. Refresh to retry.`);
+    } else {
+      announce(`${targets.length} ${targets.length === 1 ? "member" : "members"} verified.`);
     }
   }
 
@@ -123,24 +151,32 @@ export function AdminMembers() {
         </button>
       </div>
 
-      {/* Summary pills */}
-      {(unverifiedCount > 0 || pendingConsentCount > 0) && (
-        <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
-          {unverifiedCount > 0 && (
-            <span style={{ fontSize: 12, fontWeight: 700, padding: "5px 12px", borderRadius: 999, background: "#fff3cd", color: "#856404" }}>
-              {unverifiedCount} unverified
-            </span>
-          )}
-          {pendingConsentCount > 0 && (
-            <span style={{ fontSize: 12, fontWeight: 700, padding: "5px 12px", borderRadius: 999, background: "var(--surface-container)", color: "var(--muted)" }}>
-              {pendingConsentCount} pending consent
-            </span>
-          )}
-        </div>
-      )}
+      {/* Status tabs */}
+      <div className="category-row" style={{ marginBottom: 16 }}>
+        {(["all", "unverified", "pending_consent"] as StatusTab[]).map((tab) => {
+          const count = tab === "all" ? members.length : tab === "unverified" ? unverifiedCount : pendingConsentCount;
+          const label = tab === "all" ? "All" : tab === "unverified" ? "Unverified" : "Pending Consent";
+          return (
+            <button
+              key={tab}
+              type="button"
+              className={statusTab === tab ? "active" : ""}
+              onClick={() => setStatusTab(tab)}
+              style={{ display: "flex", alignItems: "center", gap: 5 }}
+            >
+              {label}
+              {count > 0 && (
+                <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 5px", borderRadius: 999, background: statusTab === tab ? "rgba(255,255,255,0.3)" : "var(--surface-container)", color: statusTab === tab ? "inherit" : "var(--muted)" }}>
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
 
-      {/* Filters */}
-      <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+      {/* Filters row */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
         <div style={{ position: "relative", flex: "1 1 220px" }}>
           <MagnifyingGlass size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--muted)" }} />
           <input
@@ -154,7 +190,7 @@ export function AdminMembers() {
               borderRadius: 8,
               fontSize: 13,
               color: "var(--on-surface)",
-              background: "var(--surface-bright, #fff)",
+              background: "var(--surface-bright)",
               outline: "none",
               boxSizing: "border-box",
             }}
@@ -169,13 +205,46 @@ export function AdminMembers() {
             borderRadius: 8,
             fontSize: 13,
             color: "var(--on-surface)",
-            background: "var(--surface-bright, #fff)",
+            background: "var(--surface-bright)",
             outline: "none",
           }}
         >
           <option value="">All roles</option>
           {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
         </select>
+        <select
+          value={uniFilter}
+          onChange={(e) => setUniFilter(e.target.value)}
+          style={{
+            padding: "9px 12px",
+            border: "1.5px solid var(--outline-variant, rgba(208,194,213,0.5))",
+            borderRadius: 8,
+            fontSize: 13,
+            color: "var(--on-surface)",
+            background: "var(--surface-bright)",
+            outline: "none",
+          }}
+        >
+          <option value="">All universities</option>
+          {universities.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+        </select>
+        {statusTab === "unverified" && filtered.some((m) => !m.verified) && (
+          <button
+            type="button"
+            onClick={handleBulkVerify}
+            disabled={bulkVerifying}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              padding: "9px 14px", borderRadius: 8,
+              background: "var(--secondary-container)", color: "var(--on-secondary-container)",
+              border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer",
+              opacity: bulkVerifying ? 0.6 : 1, whiteSpace: "nowrap",
+            }}
+          >
+            <ShieldCheckered size={15} weight="fill" />
+            {bulkVerifying ? "Verifying…" : `Verify All (${filtered.filter((m) => !m.verified).length})`}
+          </button>
+        )}
       </div>
 
       {/* Table */}
@@ -183,8 +252,26 @@ export function AdminMembers() {
         {loading ? (
           <div style={{ padding: 32, textAlign: "center", color: "var(--muted)", fontSize: 14 }}>Loading members…</div>
         ) : filtered.length === 0 ? (
-          <div style={{ padding: 32, textAlign: "center", color: "var(--muted)", fontSize: 14 }}>
-            {members.length === 0 ? "No members have signed up yet." : "No members match your search."}
+          <div style={{ padding: 40, textAlign: "center" }}>
+            <div style={{ fontSize: 32, marginBottom: 10 }}>
+              {statusTab === "unverified" ? "✅" : statusTab === "pending_consent" ? "📋" : "🔍"}
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)", marginBottom: 6 }}>
+              {members.length === 0
+                ? "No members yet"
+                : statusTab === "unverified"
+                ? "All members verified"
+                : statusTab === "pending_consent"
+                ? "All consent forms accepted"
+                : "No members match your filters"}
+            </div>
+            <div style={{ fontSize: 13, color: "var(--muted)" }}>
+              {members.length === 0
+                ? "Members will appear here once they sign up."
+                : statusTab !== "all"
+                ? "Switch to All to see every member."
+                : "Try adjusting your search or filters."}
+            </div>
           </div>
         ) : (
           <div style={{ overflowX: "auto" }}>
@@ -266,8 +353,8 @@ export function AdminMembers() {
                           <span style={{
                             display: "inline-flex", alignItems: "center", gap: 4,
                             fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 999,
-                            background: member.verified ? "var(--secondary-container)" : "#fff3cd",
-                            color: member.verified ? "var(--on-secondary-container)" : "#856404",
+                            background: member.verified ? "var(--secondary-container)" : "var(--warning-bg)",
+                            color: member.verified ? "var(--on-secondary-container)" : "var(--warning-text)",
                             width: "fit-content",
                           }}>
                             {member.verified && <CheckCircle size={10} weight="fill" />}
