@@ -48,7 +48,7 @@ export function TopBar() {
       .slice(0, 2)
       .map((c) => ({
         id: `claim-${c.id}`,
-        icon: <CurrencyGbp size={14} weight="fill" style={{ color: "#856404", flexShrink: 0 }} />,
+        icon: <CurrencyGbp size={14} weight="fill" style={{ color: "var(--warning-text)", flexShrink: 0 }} />,
         text: `${c.claimant}: £${c.amount} claim ${c.status === "submitted" ? "awaiting review" : "under review"}`,
         time: new Date(c.submittedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }),
         onClick: () => { setBellOpen(false); setView("claims"); },
