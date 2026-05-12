@@ -101,7 +101,7 @@ function DataQualitySection() {
 }
 
 export function AdminView() {
-  const { setView, localSocieties, localEvents, localClaims, localForums, localResources } = useApp();
+  const { setView, navigate, localSocieties, localEvents, localClaims, localForums, localResources } = useApp();
   const [auditOpen, setAuditOpen] = useState(false);
 
   const totalMembers   = localSocieties.reduce((sum, s) => sum + s.members, 0);
@@ -226,7 +226,7 @@ export function AdminView() {
         type="button"
         className="stitch-card"
         style={{ padding: "20px 24px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", marginTop: 4, width: "100%", border: "none", textAlign: "left" }}
-        onClick={() => setView("admin-data")}
+        onClick={() => navigate("admin-data")}
         aria-label="Manage data — add societies, events, resources and forum boards"
       >
         <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--primary-soft)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -243,7 +243,7 @@ export function AdminView() {
         type="button"
         className="stitch-card"
         style={{ padding: "20px 24px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", marginTop: 4, width: "100%", border: "none", textAlign: "left" }}
-        onClick={() => setView("access-control")}
+        onClick={() => navigate("access-control")}
         aria-label="Configure access control — manage role permissions"
       >
         <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--primary-soft)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>

@@ -28,7 +28,8 @@ const BLANK_USER: Profile = {
 
 type AppState = {
   view: View;
-  setView: (view: View) => void;
+  setView: (view: View) => void;   // raw setter — use navigate() for permission-guarded navigation
+  navigate: (view: View) => void;  // guards against unauthorized views before navigating
   toast: string;
   announce: (message: string) => void;
   viewAs: Role | null;
@@ -137,6 +138,36 @@ export function AppProvider({
     announce(`Switched to ${profile.name} (${profile.role.replace(/_/g, " ")})`);
   }
 
+  // Mapping from view → required feature key (undefined = always accessible)
+  const VIEW_PERMISSION: Partial<Record<View, FeatureKey>> = {
+    societies:       "nav_societies",
+    events:          "nav_events",
+    forums:          "nav_forums",
+    resources:       "nav_resources",
+    "society-admin": "nav_society_admin",
+    admin:           "nav_admin",
+    "admin-data":    "nav_admin",
+    "access-control":"nav_admin",
+    claims:          "submit_claims",
+    "checkin-admin": "nav_admin",
+  };
+
+  function guardedSetView(next: View) {
+    const feature = VIEW_PERMISSION[next];
+    const role = viewAs ?? currentUser.role;
+    if (feature) {
+      const allowed = role === "super_admin" || permissions[role]?.[feature] === true;
+      // Extra guard: admin-data and access-control are super_admin / ukssc_staff only
+      const dataViews: View[] = ["admin-data", "access-control"];
+      const dataOnly = dataViews.includes(next) && role !== "super_admin" && role !== "ukssc_staff";
+      if (!allowed || dataOnly) {
+        setView("dashboard");
+        return;
+      }
+    }
+    setView(next);
+  }
+
   function viewSociety(id: string) {
     setCurrentSocietyId(id);
     setView("society-detail");
@@ -165,7 +196,7 @@ export function AppProvider({
   }
 
   return (
-    <AppContext.Provider value={{ view, setView, toast, announce, viewAs, setViewAs, rsvpdEventIds, setRsvpdEventIds, joinedSociety, setJoinedSociety, claimStatuses, setClaimStatuses, localClaims, setLocalClaims, localEvents, setLocalEvents, localForums, setLocalForums, localResources, setLocalResources, threads, setThreads, currentUser, setCurrentUser, currentSocietyId, viewSociety, localSocieties, setLocalSocieties, updateSociety, permissions, setPermission, can }}>
+    <AppContext.Provider value={{ view, setView, navigate: guardedSetView, toast, announce, viewAs, setViewAs, rsvpdEventIds, setRsvpdEventIds, joinedSociety, setJoinedSociety, claimStatuses, setClaimStatuses, localClaims, setLocalClaims, localEvents, setLocalEvents, localForums, setLocalForums, localResources, setLocalResources, threads, setThreads, currentUser, setCurrentUser, currentSocietyId, viewSociety, localSocieties, setLocalSocieties, updateSociety, permissions, setPermission, can }}>
       {children}
     </AppContext.Provider>
   );
