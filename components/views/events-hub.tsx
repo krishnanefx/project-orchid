@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarBlank, CaretDown, CaretUp, List, MagnifyingGlass, MapPin, QrCode, UsersThree } from "@phosphor-icons/react";
+import { CalendarBlank, CalendarPlus, CaretDown, CaretUp, List, MagnifyingGlass, MapPin, QrCode, UsersThree } from "@phosphor-icons/react";
 import { useState } from "react";
 import { useApp } from "@/lib/app-context";
 import { rsvpEventAction } from "@/lib/actions";
@@ -25,6 +25,47 @@ const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   waitlist: { bg: "#fff3cd", color: "#856404" },
   closed: { bg: "var(--surface-container)", color: "var(--muted)" },
 };
+
+function toIcsDate(iso: string): string {
+  // Format: 20250601T140000Z
+  return iso.replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+}
+
+function exportToIcs(events: OrchidEvent[]) {
+  if (events.length === 0) return;
+  const lines: string[] = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Project Orchid//UKSSC//EN",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+  ];
+  for (const e of events) {
+    const start = toIcsDate(e.startsAt);
+    // Assume 2-hour events when no end time is known
+    const startDate = new Date(e.startsAt);
+    const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
+    const end = toIcsDate(endDate.toISOString());
+    lines.push(
+      "BEGIN:VEVENT",
+      `UID:${e.id}@project-orchid`,
+      `SUMMARY:${e.title.replace(/,/g, "\\,")}`,
+      `DTSTART:${start}`,
+      `DTEND:${end}`,
+      `LOCATION:${e.location.replace(/,/g, "\\,")}`,
+      e.description ? `DESCRIPTION:${e.description.replace(/\n/g, "\\n").replace(/,/g, "\\,")}` : "DESCRIPTION:",
+      "END:VEVENT"
+    );
+  }
+  lines.push("END:VCALENDAR");
+  const blob = new Blob([lines.join("\r\n")], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "orchid-events.ics";
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 function formatDate(startsAt: string) {
   return new Date(startsAt).toLocaleDateString("en-GB", {
@@ -119,7 +160,7 @@ function EventRow({ event, onRsvp, onTicket, rsvpd }: { event: OrchidEvent; onRs
               className={rsvpd ? "stitch-secondary" : "stitch-primary"}
               onClick={onRsvp}
             >
-              {rsvpd ? "RSVP'd ✓" : "RSVP"}
+              {rsvpd ? "RSVP'd ✓" : event.status === "waitlist" ? "Join Waitlist" : "RSVP"}
             </button>
           )}
         </div>
@@ -274,7 +315,24 @@ export function EventsHub() {
       <section>
         <div className="section-row" style={{ marginBottom: 12 }}>
           <h3>Upcoming Events {search || filter !== "All" ? <span style={{ fontSize: 13, fontWeight: 400, color: "var(--muted)" }}>({filtered.length})</span> : null}</h3>
-          <span><List size={18} /></span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {rsvpdEventIds.length > 0 && (
+              <button
+                type="button"
+                className="text-action"
+                onClick={() => {
+                  const myRsvpdEvents = upcoming.filter((e) => rsvpdEventIds.includes(e.id));
+                  exportToIcs(myRsvpdEvents);
+                  announce("Calendar file downloaded.");
+                }}
+                title="Export your RSVP'd events to calendar"
+                style={{ display: "flex", alignItems: "center", gap: 5 }}
+              >
+                <CalendarPlus size={14} /> Export Calendar
+              </button>
+            )}
+            <span><List size={18} /></span>
+          </div>
         </div>
         {filtered.length === 0 ? (
           <p style={{ fontSize: 14, color: "var(--muted)", padding: "8px 0" }}>
