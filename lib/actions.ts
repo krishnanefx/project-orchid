@@ -231,6 +231,28 @@ export async function createResourceAction(input: {
   };
 }
 
+export async function deleteResourceAction(id: string): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("resources").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function updateResourceAction(id: string, patch: {
+  title?: string;
+  category?: Resource["category"];
+  audience?: string;
+  body?: string;
+}): Promise<void> {
+  const supabase = await createClient();
+  const update: Record<string, unknown> = {};
+  if (patch.title !== undefined) update.title = patch.title;
+  if (patch.category !== undefined) update.category = patch.category;
+  if (patch.audience !== undefined) update.audience = patch.audience;
+  if (patch.body !== undefined) update.body = patch.body;
+  const { error } = await supabase.from("resources").update(update).eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
 // ── Forum Boards ──────────────────────────────────────────────────────────────
 
 export async function createForumBoardAction(input: {

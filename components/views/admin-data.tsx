@@ -5,7 +5,9 @@ import {
   CalendarBlank,
   ChatCircleText,
   Article,
+  PencilSimple,
   Plus,
+  Trash,
   UsersThree,
   CheckCircle,
   Warning
@@ -18,6 +20,8 @@ import {
   createEventAction,
   createResourceAction,
   createForumBoardAction,
+  deleteResourceAction,
+  updateResourceAction,
 } from "@/lib/actions";
 import type { ForumBoard, OrchidEvent, Resource, Society } from "@/lib/types";
 
@@ -281,6 +285,7 @@ function ResourcesTab() {
   const { localResources, setLocalResources, announce } = useApp();
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({
     title: "",
     category: "guide" as Resource["category"],
@@ -296,16 +301,27 @@ function ResourcesTab() {
     setSaving(true);
     setStatus(null);
     try {
-      const resource = await createResourceAction({
-        title: form.title.trim(),
-        category: form.category,
-        audience: form.audience.trim(),
-        body: form.body.trim(),
-      });
-      setLocalResources([resource, ...localResources]);
-      setForm({ title: "", category: "guide", audience: "", body: "" });
-      setStatus({ type: "success", msg: `"${resource.title}" published.` });
-      announce(`Resource "${resource.title}" published.`);
+      if (editingId) {
+        // Update existing
+        const patch = { title: form.title.trim(), category: form.category, audience: form.audience.trim(), body: form.body.trim() };
+        setLocalResources(localResources.map((r) => r.id === editingId ? { ...r, ...patch } : r));
+        setEditingId(null);
+        setForm({ title: "", category: "guide", audience: "", body: "" });
+        setStatus({ type: "success", msg: "Resource updated." });
+        announce("Resource updated.");
+        updateResourceAction(editingId, patch).catch(() => announce("Updated locally but sync failed."));
+      } else {
+        const resource = await createResourceAction({
+          title: form.title.trim(),
+          category: form.category,
+          audience: form.audience.trim(),
+          body: form.body.trim(),
+        });
+        setLocalResources([resource, ...localResources]);
+        setForm({ title: "", category: "guide", audience: "", body: "" });
+        setStatus({ type: "success", msg: `"${resource.title}" published.` });
+        announce(`Resource "${resource.title}" published.`);
+      }
     } catch (err) {
       setStatus({ type: "error", msg: err instanceof Error ? err.message : "Failed to publish resource." });
     } finally {
@@ -313,10 +329,26 @@ function ResourcesTab() {
     }
   }
 
+  function startEdit(r: Resource) {
+    setEditingId(r.id);
+    setForm({ title: r.title, category: r.category, audience: r.audience, body: r.body ?? "" });
+    setStatus(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function handleDelete(id: string, title: string) {
+    setLocalResources(localResources.filter((r) => r.id !== id));
+    if (editingId === id) { setEditingId(null); setForm({ title: "", category: "guide", audience: "", body: "" }); }
+    announce(`"${title}" deleted.`);
+    deleteResourceAction(id).catch(() => announce("Deleted locally but sync failed."));
+  }
+
   return (
     <div className="grid-2" style={{ gap: 20, alignItems: "start" }}>
       <div className="stitch-card" style={{ padding: 24 }}>
-        <h3 style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 20 }}>Publish Resource</h3>
+        <h3 style={{ fontWeight: 700, fontSize: 14, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 20 }}>
+          {editingId ? "Edit Resource" : "Publish Resource"}
+        </h3>
         {status && <StatusBanner status={status.type} message={status.msg} />}
         <div className="stitch-form">
           <label>Title *<input value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} placeholder="Freshers onboarding pack" /></label>
@@ -329,9 +361,20 @@ function ResourcesTab() {
           </label>
           <label>Audience *<input value={form.audience} onChange={(e) => setForm((p) => ({ ...p, audience: e.target.value }))} placeholder="All verified users" /></label>
           <label>Content<textarea value={form.body} onChange={(e) => setForm((p) => ({ ...p, body: e.target.value }))} placeholder="Full article content or summary…" rows={6} /></label>
-          <button className="stitch-primary full" type="button" onClick={handleCreate} disabled={saving}>
-            <Plus size={15} /> {saving ? "Publishing…" : "Publish Resource"}
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="stitch-primary" style={{ flex: 1 }} type="button" onClick={handleCreate} disabled={saving}>
+              <Plus size={15} /> {saving ? (editingId ? "Saving…" : "Publishing…") : (editingId ? "Save Changes" : "Publish Resource")}
+            </button>
+            {editingId && (
+              <button
+                type="button"
+                className="stitch-secondary"
+                onClick={() => { setEditingId(null); setForm({ title: "", category: "guide", audience: "", body: "" }); setStatus(null); }}
+              >
+                Cancel
+              </button>
+            )}
+          </div>
         </div>
       </div>
       <div className="stitch-card" style={{ padding: 24 }}>
@@ -343,12 +386,41 @@ function ResourcesTab() {
         ) : (
           <div style={{ display: "grid", gap: 10 }}>
             {localResources.map((r) => (
-              <div key={r.id} style={{ padding: "12px 16px", borderRadius: 10, background: "var(--surface-container, #f8f4fa)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "2px 8px", borderRadius: 999, background: "var(--primary-soft)", color: "var(--primary)" }}>{r.category}</span>
+              <div
+                key={r.id}
+                style={{
+                  padding: "12px 14px", borderRadius: 10,
+                  background: editingId === r.id ? "var(--primary-soft)" : "var(--surface-container)",
+                  border: editingId === r.id ? "1.5px solid var(--primary)" : "1.5px solid transparent",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "2px 8px", borderRadius: 999, background: "var(--primary-soft)", color: "var(--primary)", marginBottom: 4, display: "inline-block" }}>
+                      {r.category}
+                    </span>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--on-surface)" }}>{r.title}</div>
+                    <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{r.audience} &middot; {r.publishedAt}</div>
+                  </div>
+                  <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
+                    <button
+                      type="button"
+                      onClick={() => startEdit(r)}
+                      title="Edit resource"
+                      style={{ border: 0, background: "none", cursor: "pointer", color: "var(--muted)", padding: 5, borderRadius: 5 }}
+                    >
+                      <PencilSimple size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(r.id, r.title)}
+                      title="Delete resource"
+                      style={{ border: 0, background: "none", cursor: "pointer", color: "var(--muted)", padding: 5, borderRadius: 5 }}
+                    >
+                      <Trash size={13} />
+                    </button>
+                  </div>
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--on-surface)" }}>{r.title}</div>
-                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{r.audience} &middot; {r.publishedAt}</div>
               </div>
             ))}
           </div>
