@@ -137,7 +137,7 @@ export function DashboardView() {
         }}>
           <IdentificationCard size={22} style={{ color: "var(--warning-text)", flexShrink: 0 }} weight="fill" />
           <div style={{ flex: 1, minWidth: 200 }}>
-            <p style={{ fontSize: 14, fontWeight: 700, color: "#78350f", margin: "0 0 2px" }}>
+            <p style={{ fontSize: 14, fontWeight: 700, color: "var(--warning-text)", margin: "0 0 2px" }}>
               Complete your profile
             </p>
             <p style={{ fontSize: 13, color: "var(--warning-text)", margin: 0 }}>
@@ -150,8 +150,8 @@ export function DashboardView() {
             style={{
               flexShrink: 0, fontSize: 13, fontWeight: 700,
               padding: "8px 16px", borderRadius: 8,
-              border: "1.5px solid #b45309",
-              background: "rgba(255,255,255,0.6)", color: "var(--warning-text)",
+              border: "1.5px solid var(--warning-text)",
+              background: "var(--surface-bright)", color: "var(--warning-text)",
               cursor: "pointer",
             }}
           >
