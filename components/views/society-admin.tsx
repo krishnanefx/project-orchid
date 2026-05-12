@@ -22,7 +22,7 @@ import {
 } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/lib/app-context";
-import { checkInAction, createEventAction, createForumBoardAction, getEventRsvpsAction, getSocietyMembersAction, updateEventStatusAction, updateForumBoardAction, updateSocietyAction } from "@/lib/actions";
+import { checkInAction, createEventAction, createForumBoardAction, getEventRsvpsAction, getSocietyMembersAction, updateEventAction, updateEventStatusAction, updateForumBoardAction, updateSocietyAction } from "@/lib/actions";
 import { downloadCsv } from "@/lib/utils";
 import { universities } from "@/lib/data";
 import type { EventDraft, ForumBoard, OrchidEvent } from "@/lib/types";
@@ -483,6 +483,7 @@ function EventsTab({
       setLocalEvents(updated);
       setAllEvents(allEvents.map((e) => e.id === editId ? { ...e, ...draft, societyIds: e.societyIds } : e));
       announce("Event updated.");
+      updateEventAction(editId, draft).catch(() => announce("Saved locally but failed to sync."));
     } else {
       const optimistic: OrchidEvent = {
         id: `evt-${Date.now()}`,

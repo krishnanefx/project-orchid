@@ -433,6 +433,28 @@ export async function updateEventStatusAction(
   await supabase.from("events").update({ status }).eq("id", eventId);
 }
 
+export async function updateEventAction(
+  eventId: string,
+  patch: {
+    title?: string;
+    type?: string;
+    startsAt?: string;
+    location?: string;
+    capacity?: number;
+    description?: string;
+  }
+): Promise<void> {
+  const supabase = await createClient();
+  const update: Record<string, unknown> = {};
+  if (patch.title !== undefined) update.title = patch.title;
+  if (patch.type !== undefined) update.type = patch.type;
+  if (patch.startsAt !== undefined) update.starts_at = patch.startsAt;
+  if (patch.location !== undefined) update.location = patch.location;
+  if (patch.capacity !== undefined) update.capacity = patch.capacity;
+  if (patch.description !== undefined) update.description = patch.description;
+  await supabase.from("events").update(update).eq("id", eventId);
+}
+
 export async function rsvpEventAction(
   eventId: string,
   userId: string
