@@ -68,11 +68,15 @@ export function AdminMembers() {
 
   async function handleRoleChange(userId: string, role: Role) {
     setUpdatingId(userId);
+    const previousRole = members.find((m) => m.id === userId)?.role;
     setMembers((prev) => prev.map((m) => m.id === userId ? { ...m, role } : m));
     try {
       await updateMemberRoleAction(userId, role);
       announce(`Role updated to ${ROLE_LABELS[role]}.`);
     } catch {
+      if (previousRole) {
+        setMembers((prev) => prev.map((m) => m.id === userId ? { ...m, role: previousRole } : m));
+      }
       announce("Failed to update role — please try again.");
     } finally {
       setUpdatingId(null);
@@ -81,11 +85,13 @@ export function AdminMembers() {
 
   async function handleVerify(userId: string, name: string) {
     setUpdatingId(userId);
+    const wasVerified = members.find((m) => m.id === userId)?.verified ?? false;
     setMembers((prev) => prev.map((m) => m.id === userId ? { ...m, verified: true } : m));
     try {
       await verifyMemberAction(userId);
       announce(`${name} verified.`);
     } catch {
+      setMembers((prev) => prev.map((m) => m.id === userId ? { ...m, verified: wasVerified } : m));
       announce("Failed to verify — please try again.");
     } finally {
       setUpdatingId(null);

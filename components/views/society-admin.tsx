@@ -535,12 +535,15 @@ function EventsTab({
 
   async function handleCheckIn(event: OrchidEvent) {
     setCheckingIn(event.id);
+    const previousCount = event.checkedIn;
     setLocalEvents((prev) => prev.map((e) => e.id === event.id ? { ...e, checkedIn: e.checkedIn + 1 } : e));
     setAllEvents(allEvents.map((e) => e.id === event.id ? { ...e, checkedIn: e.checkedIn + 1 } : e));
     try {
       await checkInAction(event.id);
       announce("Check-in recorded.");
     } catch {
+      setLocalEvents((prev) => prev.map((e) => e.id === event.id ? { ...e, checkedIn: previousCount } : e));
+      setAllEvents(allEvents);
       announce("Check-in failed — please try again.");
     } finally {
       setCheckingIn(null);

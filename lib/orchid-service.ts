@@ -95,13 +95,16 @@ export function mapProfile(row: Record<string, unknown>): Profile {
   // university_id in DB is a UUID, but the client uses slugs (e.g. "ucl").
   // Resolve from email domain so university name shows correctly everywhere.
   const resolvedUniversity = resolveUniversityByEmail(email);
+  const storedUniversityId = (typeof row.university_id === "string" && row.university_id.trim())
+    ? row.university_id
+    : undefined;
   return {
     id: row.id as string,
     name: (row.full_name ?? row.name ?? "") as string,
     email,
     role: (row.role ?? "student_member") as Profile["role"],
     accountType: (row.account_type ?? "student") as Profile["accountType"],
-    universityId: resolvedUniversity?.id ?? undefined,
+    universityId: resolvedUniversity?.id ?? storedUniversityId,
     societyId: row.society_id as string | undefined,
     course: row.course as string | undefined,
     year: (row.study_year ?? row.year) as string | undefined,

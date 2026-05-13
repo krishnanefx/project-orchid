@@ -75,6 +75,9 @@ export function SettingsView() {
 
   const university = universities.find((u) => u.id === currentUser.universityId);
   const mySociety = localSocieties.find((s) => s.id === currentUser.societyId);
+  const hasSupabaseBrowserConfig = Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
 
   const initials = currentUser.name
     .split(" ")
@@ -113,6 +116,11 @@ export function SettingsView() {
   }
 
   async function handlePasswordChange() {
+    if (!hasSupabaseBrowserConfig) {
+      setPwError("Password updates are unavailable in this environment.");
+      setPwStatus("error");
+      return;
+    }
     if (newPassword.length < 8) {
       setPwError("Password must be at least 8 characters.");
       setPwStatus("error");
@@ -401,7 +409,7 @@ export function SettingsView() {
         </div>
 
         {/* Password change — only shown when Supabase is configured */}
-        {process.env.NEXT_PUBLIC_SUPABASE_URL && (
+        {hasSupabaseBrowserConfig && (
           <div className="stitch-card" style={{ padding: 24, marginBottom: 24 }}>
             <h3 style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--on-surface)", marginBottom: 6 }}>
               Change Password

@@ -3,6 +3,7 @@
 import { CalendarBlank, ChatCircleText, CurrencyGbp, IdentificationCard, MapPin, MegaphoneSimple, QrCode, Storefront, UsersThree, X } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { useApp } from "@/lib/app-context";
+import { rsvpEventAction } from "@/lib/actions";
 import { universities } from "@/lib/data";
 import { PageHeader, Thread } from "@/components/ui/primitives";
 import { TicketModal } from "@/components/ui/ticket-modal";
@@ -64,6 +65,36 @@ export function DashboardView() {
 
   const mySociety = localSocieties.find((s) => s.id === currentUser.societyId) ?? null;
   const myUniversity = universities.find((u) => u.id === mySociety?.universityId);
+
+  function toggleRsvp(event: OrchidEvent) {
+    const alreadyRsvpd = rsvpdEventIds.includes(event.id);
+    const nextRsvps = Math.max(0, event.rsvps + (alreadyRsvpd ? -1 : 1));
+    const nextStatus = !alreadyRsvpd && nextRsvps >= event.capacity
+      ? "waitlist" as const
+      : event.status === "waitlist" && nextRsvps < event.capacity
+        ? "open" as const
+        : event.status;
+    const nextIds = alreadyRsvpd
+      ? rsvpdEventIds.filter((id) => id !== event.id)
+      : [...rsvpdEventIds, event.id];
+    const nextEvents = localEvents.map((e) => e.id === event.id ? { ...e, rsvps: nextRsvps, status: nextStatus } : e);
+    setRsvpdEventIds(nextIds);
+    setLocalEvents(nextEvents);
+    announce(
+      alreadyRsvpd
+        ? `RSVP cancelled for ${event.title}.`
+        : nextStatus === "waitlist"
+          ? `Added to waitlist — event is now full.`
+          : "RSVP confirmed. Your QR check-in will appear before the event."
+    );
+
+    if (!currentUser.id) return;
+    rsvpEventAction(event.id, currentUser.id).catch(() => {
+      setRsvpdEventIds(rsvpdEventIds);
+      setLocalEvents(localEvents);
+      announce("RSVP failed to sync. Please try again.");
+    });
+  }
 
   const forumItems = [
     ...threads,
@@ -214,14 +245,7 @@ export function DashboardView() {
                 </span>
                 <button
                   className={rsvpdEventIds.includes(featuredEvent.id) ? "stitch-secondary" : "stitch-primary"}
-                  onClick={() => {
-                    const alreadyRsvpd = rsvpdEventIds.includes(featuredEvent.id);
-                    const nextRsvps = Math.max(0, featuredEvent.rsvps + (alreadyRsvpd ? -1 : 1));
-                    const nextStatus = !alreadyRsvpd && nextRsvps >= featuredEvent.capacity ? "waitlist" as const : featuredEvent.status;
-                    setRsvpdEventIds(alreadyRsvpd ? rsvpdEventIds.filter((id) => id !== featuredEvent.id) : [...rsvpdEventIds, featuredEvent.id]);
-                    setLocalEvents(localEvents.map((e) => e.id === featuredEvent.id ? { ...e, rsvps: nextRsvps, status: nextStatus } : e));
-                    announce(alreadyRsvpd ? `RSVP cancelled for ${featuredEvent.title}.` : nextStatus === "waitlist" ? `Added to waitlist — event is now full.` : "RSVP confirmed. Your QR check-in will appear before the event.");
-                  }}
+                  onClick={() => toggleRsvp(featuredEvent)}
                   type="button"
                 >
                   {rsvpdEventIds.includes(featuredEvent.id) ? "RSVP'd ✓" : "RSVP Now"}
@@ -355,11 +379,7 @@ export function DashboardView() {
                       type="button"
                       className="stitch-secondary"
                       style={{ fontSize: 11, padding: "4px 10px" }}
-                      onClick={() => {
-                        setRsvpdEventIds(rsvpdEventIds.filter((id) => id !== event.id));
-                        setLocalEvents(localEvents.map((e) => e.id === event.id ? { ...e, rsvps: Math.max(0, e.rsvps - 1) } : e));
-                        announce(`RSVP cancelled for ${event.title}.`);
-                      }}
+                      onClick={() => toggleRsvp(event)}
                     >
                       Cancel
                     </button>

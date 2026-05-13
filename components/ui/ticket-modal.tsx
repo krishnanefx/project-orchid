@@ -1,11 +1,26 @@
 "use client";
 
 import { CalendarBlank, MapPin, X } from "@phosphor-icons/react";
+import { useEffect, useState } from "react";
+import QRCode from "qrcode";
 import type { OrchidEvent } from "@/lib/types";
 
 export function TicketModal({ event, userId, onClose }: { event: OrchidEvent; userId: string; onClose: () => void }) {
   const qrData = `ORCHID-${event.id}${userId ? `-${userId.slice(0, 8)}` : ""}`;
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(qrData)}&bgcolor=faf7fb&color=6b21a8`;
+  const [qrUrl, setQrUrl] = useState("");
+
+  useEffect(() => {
+    QRCode.toDataURL(qrData, {
+      width: 160,
+      margin: 1,
+      color: {
+        dark: "#6b21a8",
+        light: "#faf7fb",
+      },
+    })
+      .then(setQrUrl)
+      .catch(() => setQrUrl(""));
+  }, [qrData]);
 
   return (
     <div
@@ -60,9 +75,13 @@ export function TicketModal({ event, userId, onClose }: { event: OrchidEvent; us
 
         {/* QR section */}
         <div style={{ padding: "20px", background: "var(--surface-container, #faf7fb)", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-          <div style={{ background: "#fff", padding: 10, borderRadius: 12, border: "1.5px solid var(--outline-variant, rgba(208,194,213,0.4))" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qrUrl} alt="Check-in QR code" width={140} height={140} style={{ display: "block", borderRadius: 4 }} />
+          <div style={{ background: "#fff", padding: 10, borderRadius: 12, border: "1.5px solid var(--outline-variant, rgba(208,194,213,0.4))", minHeight: 160, minWidth: 160, display: "grid", placeItems: "center" }}>
+            {qrUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={qrUrl} alt="Check-in QR code" width={140} height={140} style={{ display: "block", borderRadius: 4 }} />
+            ) : (
+              <span style={{ fontSize: 12, color: "var(--muted)" }}>Generating QR…</span>
+            )}
           </div>
           <p style={{ fontSize: 12, color: "var(--muted)", margin: 0, textAlign: "center", lineHeight: 1.5 }}>
             Show this to the committee at the door.<br />
