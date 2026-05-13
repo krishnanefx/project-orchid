@@ -9,6 +9,9 @@ export default function ResetPasswordPage() {
   const [confirm, setConfirm] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const hasSupabaseBrowserConfig = Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -25,6 +28,11 @@ export default function ResetPasswordPage() {
 
     setStatus("loading");
     setErrorMsg("");
+    if (!hasSupabaseBrowserConfig) {
+      setErrorMsg("Password reset is unavailable in this environment.");
+      setStatus("error");
+      return;
+    }
 
     const supabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -62,7 +70,11 @@ export default function ResetPasswordPage() {
                 <p className="font-body-sm text-on-surface-variant">Choose a strong password for your account.</p>
               </div>
 
-              {status === "success" ? (
+              {!hasSupabaseBrowserConfig ? (
+                <div className="px-4 py-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-sm font-medium">
+                  Password reset is unavailable because Supabase is not configured.
+                </div>
+              ) : status === "success" ? (
                 <div>
                   <div className="mb-6 px-4 py-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm font-medium">
                     Password updated successfully.

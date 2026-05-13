@@ -122,6 +122,10 @@ export function ClaimsView() {
   }
 
   function updateStatus(claimId: string, newStatus: ClaimStatus) {
+    if (!isReviewer) {
+      announce("Only reviewers can update claim statuses.");
+      return;
+    }
     setClaimStatuses({ ...claimStatuses, [claimId]: newStatus });
     updateClaimStatusAction(claimId, newStatus).catch(console.error);
     announce(`Claim marked ${newStatus.replace("_", " ")}.`);
@@ -216,26 +220,43 @@ export function ClaimsView() {
                       <td>{claim.purpose}</td>
                       <td style={{ fontWeight: 700 }}>£{claim.amount.toFixed(2)}</td>
                       <td>
-                        <select
-                          value={status}
-                          onChange={(event) => updateStatus(claim.id, event.target.value as ClaimStatus)}
-                          aria-label={`Update ${claim.claimant} claim status`}
-                          style={{
-                            fontSize: 11,
-                            fontWeight: 700,
-                            padding: "4px 8px",
-                            borderRadius: 6,
-                            border: "none",
-                            background: colors.bg,
-                            color: colors.color,
-                            cursor: "pointer",
-                            outline: "none",
-                          }}
-                        >
-                          {(["submitted", "under_review", "approved", "rejected", "paid"] as ClaimStatus[]).map((item) => (
-                            <option key={item} value={item}>{item.replace("_", " ")}</option>
-                          ))}
-                        </select>
+                        {isReviewer ? (
+                          <select
+                            value={status}
+                            onChange={(event) => updateStatus(claim.id, event.target.value as ClaimStatus)}
+                            aria-label={`Update ${claim.claimant} claim status`}
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 700,
+                              padding: "4px 8px",
+                              borderRadius: 6,
+                              border: "none",
+                              background: colors.bg,
+                              color: colors.color,
+                              cursor: "pointer",
+                              outline: "none",
+                            }}
+                          >
+                            {(["submitted", "under_review", "approved", "rejected", "paid"] as ClaimStatus[]).map((item) => (
+                              <option key={item} value={item}>{item.replace("_", " ")}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              fontSize: 11,
+                              fontWeight: 700,
+                              padding: "4px 8px",
+                              borderRadius: 6,
+                              background: colors.bg,
+                              color: colors.color,
+                              textTransform: "capitalize",
+                            }}
+                          >
+                            {status.replace("_", " ")}
+                          </span>
+                        )}
                       </td>
                       {isReviewer && (
                         <td style={{ minWidth: 160 }}>

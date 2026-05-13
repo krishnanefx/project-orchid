@@ -553,7 +553,8 @@ export async function updateEventStatusAction(
   status: "open" | "waitlist" | "closed"
 ): Promise<void> {
   const supabase = await createClient();
-  await supabase.from("events").update({ status }).eq("id", eventId);
+  const { error } = await supabase.from("events").update({ status }).eq("id", eventId);
+  if (error) throw new Error(error.message);
 }
 
 export async function updateEventAction(
@@ -570,12 +571,13 @@ export async function updateEventAction(
   const supabase = await createClient();
   const update: Record<string, unknown> = {};
   if (patch.title !== undefined) update.title = patch.title;
-  if (patch.type !== undefined) update.type = patch.type;
+  if (patch.type !== undefined) update.event_type = patch.type;
   if (patch.startsAt !== undefined) update.starts_at = patch.startsAt;
   if (patch.location !== undefined) update.location = patch.location;
   if (patch.capacity !== undefined) update.capacity = patch.capacity;
   if (patch.description !== undefined) update.description = patch.description;
-  await supabase.from("events").update(update).eq("id", eventId);
+  const { error } = await supabase.from("events").update(update).eq("id", eventId);
+  if (error) throw new Error(error.message);
 }
 
 export async function rsvpEventAction(
@@ -583,23 +585,53 @@ export async function rsvpEventAction(
   userId: string
 ): Promise<"added" | "removed"> {
   const supabase = await createClient();
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from("event_rsvps")
     .select("id")
     .eq("event_id", eventId)
     .eq("profile_id", userId)
     .maybeSingle();
+  if (existingError) throw new Error(existingError.message);
 
-  const { data: ev } = await supabase.from("events").select("rsvps").eq("id", eventId).single();
+  const { data: ev, error: eventError } = await supabase
+    .from("events")
+    .select("rsvps, capacity, status")
+    .eq("id", eventId)
+    .single();
+  if (eventError) throw new Error(eventError.message);
   const currentRsvps = ((ev as Record<string, unknown>)?.rsvps as number) ?? 0;
+  const capacity = ((ev as Record<string, unknown>)?.capacity as number) ?? 0;
+  const currentStatus = ((ev as Record<string, unknown>)?.status as OrchidEvent["status"]) ?? "open";
 
   if (existing) {
-    await supabase.from("event_rsvps").delete().eq("event_id", eventId).eq("profile_id", userId);
-    await supabase.from("events").update({ rsvps: Math.max(0, currentRsvps - 1) }).eq("id", eventId);
+    const { error: deleteError } = await supabase.from("event_rsvps").delete().eq("event_id", eventId).eq("profile_id", userId);
+    if (deleteError) throw new Error(deleteError.message);
+    const nextRsvps = Math.max(0, currentRsvps - 1);
+    const nextStatus: OrchidEvent["status"] = currentStatus === "closed"
+      ? "closed"
+      : nextRsvps >= capacity
+        ? "waitlist"
+        : "open";
+    const { error: updateError } = await supabase
+      .from("events")
+      .update({ rsvps: nextRsvps, status: nextStatus })
+      .eq("id", eventId);
+    if (updateError) throw new Error(updateError.message);
     return "removed";
   } else {
-    await supabase.from("event_rsvps").insert({ event_id: eventId, profile_id: userId });
-    await supabase.from("events").update({ rsvps: currentRsvps + 1 }).eq("id", eventId);
+    const { error: insertError } = await supabase.from("event_rsvps").insert({ event_id: eventId, profile_id: userId });
+    if (insertError) throw new Error(insertError.message);
+    const nextRsvps = currentRsvps + 1;
+    const nextStatus: OrchidEvent["status"] = currentStatus === "closed"
+      ? "closed"
+      : nextRsvps >= capacity
+        ? "waitlist"
+        : "open";
+    const { error: updateError } = await supabase
+      .from("events")
+      .update({ rsvps: nextRsvps, status: nextStatus })
+      .eq("id", eventId);
+    if (updateError) throw new Error(updateError.message);
     return "added";
   }
 }
