@@ -5,20 +5,15 @@ import {
   CalendarBlank,
   ChartLineUp,
   ChatCircleText,
-  CurrencyGbp,
   Eye,
   GearSix,
   House,
   IdentificationCard,
-  Moon,
   SignOut,
-  Sun,
   UsersThree
 } from "@phosphor-icons/react";
-import { useEffect, useState } from "react";
 import { useApp, type View } from "@/lib/app-context";
 import type { Role } from "@/lib/types";
-import { applyTheme, getStoredTheme, type Theme } from "@/lib/theme";
 
 const navItems: { id: View; label: string; icon: React.ComponentType<{ size?: number; weight?: "regular" | "fill" | "bold" }> }[] = [
   { id: "dashboard", label: "Dashboard", icon: House },
@@ -26,7 +21,6 @@ const navItems: { id: View; label: string; icon: React.ComponentType<{ size?: nu
   { id: "events", label: "Events", icon: CalendarBlank },
   { id: "forums", label: "Forums", icon: ChatCircleText },
   { id: "resources", label: "Resources", icon: Article },
-  { id: "claims", label: "Claims", icon: CurrencyGbp },
   { id: "society-admin", label: "My Society", icon: IdentificationCard },
   { id: "admin", label: "Admin", icon: ChartLineUp }
 ];
@@ -60,26 +54,12 @@ const PREVIEW_ROLES: { role: Role; label: string }[] = [
 ];
 
 export function Sidebar() {
-  const { view, setView, currentUser, viewAs, setViewAs, can, localClaims, claimStatuses, localEvents, rsvpdEventIds } = useApp();
-  const [theme, setTheme] = useState<Theme>("light");
-
-  useEffect(() => {
-    setTheme(getStoredTheme());
-  }, []);
-
-  function handleThemeToggle() {
-    const next: Theme = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    applyTheme(next);
-  }
+  const { view, setView, navigate, currentUser, viewAs, setViewAs, can } = useApp();
 
   const visibleNavItems = navItems.filter((item) => {
     const feature = NAV_FEATURE_MAP[item.id];
-    if (item.id === "society-admin" && !currentUser.societyId) return false;
-    if (item.id === "claims") {
-      return can("submit_claims") || ["finance_reviewer", "ukssc_staff", "super_admin"].includes(currentUser.role);
-    }
     if (!feature) return true;
+    if (item.id === "society-admin" && !currentUser.societyId) return false;
     return can(feature);
   });
 
@@ -89,15 +69,6 @@ export function Sidebar() {
     .join("")
     .slice(0, 2)
     .toUpperCase();
-
-  // Badge counts for nav items
-  const now = new Date().toISOString();
-  const upcomingRsvpCount = localEvents.filter((e) => rsvpdEventIds.includes(e.id) && e.startsAt > now).length;
-  const pendingClaimsCount = localClaims.filter((c) => (claimStatuses[c.id] ?? c.status) === "submitted" || (claimStatuses[c.id] ?? c.status) === "under_review").length;
-  const navBadges: Partial<Record<View, number>> = {
-    events: upcomingRsvpCount > 0 ? upcomingRsvpCount : 0,
-    claims: pendingClaimsCount > 0 ? pendingClaimsCount : 0,
-  };
 
   return (
     <aside className="stitch-sidebar">
@@ -109,25 +80,10 @@ export function Sidebar() {
         {visibleNavItems.map((item) => {
           const Icon = item.icon;
           const active = view === item.id;
-          const badge = navBadges[item.id] ?? 0;
           return (
-            <button key={item.id} className={`stitch-nav-item ${active ? "active" : ""}`} onClick={() => setView(item.id)} type="button" style={{ position: "relative" }}>
+            <button key={item.id} className={`stitch-nav-item ${active ? "active" : ""}`} onClick={() => navigate(item.id)} type="button">
               <Icon size={17} weight={active ? "fill" : "regular"} />
               <span>{item.label}</span>
-              {badge > 0 && !active && (
-                <span style={{
-                  marginLeft: "auto",
-                  fontSize: 10,
-                  fontWeight: 700,
-                  padding: "1px 6px",
-                  borderRadius: 999,
-                  background: "var(--primary)",
-                  color: "#fff",
-                  flexShrink: 0,
-                }}>
-                  {badge}
-                </span>
-              )}
             </button>
           );
         })}
@@ -136,7 +92,7 @@ export function Sidebar() {
       <div style={{ marginTop: "auto", paddingTop: 16, borderTop: "1px solid rgba(208,194,213,0.3)" }}>
         <button
           type="button"
-          onClick={() => setView("settings")}
+          onClick={() => navigate("settings")}
           style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 4px", width: "100%", background: "none", border: "none", cursor: "pointer", borderRadius: 8, textAlign: "left" }}
           aria-label="Open profile settings"
         >
@@ -199,16 +155,10 @@ export function Sidebar() {
             </select>
           </div>
         )}
-        <button className="stitch-nav-item" type="button" onClick={() => setView("settings")}><GearSix size={17} /> Settings</button>
-        <button
-          className="stitch-nav-item"
-          type="button"
-          onClick={handleThemeToggle}
-          aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-        >
-          {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
-          {theme === "dark" ? "Light Mode" : "Dark Mode"}
-        </button>
+        {can("submit_claims") && currentUser.societyId && (
+          <button className="stitch-primary full" onClick={() => navigate("claims")} type="button">Submit Reimbursement</button>
+        )}
+        <button className="stitch-nav-item" type="button" onClick={() => navigate("settings")}><GearSix size={17} /> Settings</button>
         <form action="/api/auth/signout" method="POST" style={{ width: "100%" }}>
           <button className="stitch-nav-item" type="submit" style={{ width: "100%" }}><SignOut size={17} /> Logout</button>
         </form>
