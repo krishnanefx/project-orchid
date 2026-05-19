@@ -67,12 +67,17 @@ export function AdminMembers() {
   });
 
   async function handleRoleChange(userId: string, role: Role) {
+    const previous = members.find((m) => m.id === userId)?.role;
     setUpdatingId(userId);
     setMembers((prev) => prev.map((m) => m.id === userId ? { ...m, role } : m));
     try {
       await updateMemberRoleAction(userId, role);
       announce(`Role updated to ${ROLE_LABELS[role]}.`);
     } catch {
+      // Roll back optimistic update on failure
+      if (previous !== undefined) {
+        setMembers((prev) => prev.map((m) => m.id === userId ? { ...m, role: previous } : m));
+      }
       announce("Failed to update role — please try again.");
     } finally {
       setUpdatingId(null);
@@ -83,9 +88,11 @@ export function AdminMembers() {
     setUpdatingId(userId);
     setMembers((prev) => prev.map((m) => m.id === userId ? { ...m, verified: true } : m));
     try {
-      await verifyMemberAction(userId);
+      await verifyMemberAction(userId, true);
       announce(`${name} verified.`);
     } catch {
+      // Roll back optimistic update on failure
+      setMembers((prev) => prev.map((m) => m.id === userId ? { ...m, verified: false } : m));
       announce("Failed to verify — please try again.");
     } finally {
       setUpdatingId(null);
@@ -100,7 +107,7 @@ export function AdminMembers() {
     setMembers((prev) => prev.map((m) => targets.find((t) => t.id === m.id) ? { ...m, verified: true } : m));
     let failed = 0;
     await Promise.all(targets.map((m) =>
-      verifyMemberAction(m.id).catch(() => { failed++; })
+      verifyMemberAction(m.id, true).catch(() => { failed++; })
     ));
     setBulkVerifying(false);
     if (failed > 0) {

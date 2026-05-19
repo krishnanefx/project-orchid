@@ -1,11 +1,13 @@
 "use client";
 
-import { CalendarBlank, MapPin, X } from "@phosphor-icons/react";
+import { CalendarBlank, MapPin, QrCode, X } from "@phosphor-icons/react";
 import type { OrchidEvent } from "@/lib/types";
 
 export function TicketModal({ event, userId, onClose }: { event: OrchidEvent; userId: string; onClose: () => void }) {
+  // Local token — no external API call to preserve privacy and offline reliability.
+  // TODO: generate an actual scannable QR image once a bundled qrcode library
+  // (e.g. "qrcode") is added to the project dependencies.
   const qrData = `ORCHID-${event.id}${userId ? `-${userId.slice(0, 8)}` : ""}`;
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(qrData)}&bgcolor=faf7fb&color=6b21a8`;
 
   return (
     <div
@@ -60,9 +62,16 @@ export function TicketModal({ event, userId, onClose }: { event: OrchidEvent; us
 
         {/* QR section */}
         <div style={{ padding: "20px", background: "var(--surface-container, #faf7fb)", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-          <div style={{ background: "#fff", padding: 10, borderRadius: 12, border: "1.5px solid var(--outline-variant, rgba(208,194,213,0.4))" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qrUrl} alt="Check-in QR code" width={140} height={140} style={{ display: "block", borderRadius: 4 }} />
+          <div style={{
+            background: "#fff", padding: 10, borderRadius: 12,
+            border: "1.5px solid var(--outline-variant, rgba(208,194,213,0.4))",
+            width: 160, height: 160,
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6,
+          }}>
+            <QrCode size={60} style={{ color: "var(--primary)" }} aria-hidden="true" />
+            <span style={{ fontSize: 7, fontFamily: "monospace", wordBreak: "break-all", textAlign: "center", lineHeight: 1.4, color: "var(--on-surface)", padding: "0 4px" }}>
+              {qrData}
+            </span>
           </div>
           <p style={{ fontSize: 12, color: "var(--muted)", margin: 0, textAlign: "center", lineHeight: 1.5 }}>
             Show this to the committee at the door.<br />

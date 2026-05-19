@@ -158,6 +158,10 @@ export function ClaimsView() {
   const canSubmit = can("submit_claims");
 
   async function submitClaim() {
+    if (!canSubmit) {
+      announce("Your account type does not have permission to submit claims.");
+      return;
+    }
     const result = claimSchema.safeParse({ purpose, amount });
     if (!result.success) {
       const fieldErrors = result.error.flatten().fieldErrors;

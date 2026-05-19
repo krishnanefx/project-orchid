@@ -14,6 +14,8 @@ const SHORTCUTS = [
   { keys: ["G", "F"], label: "Go to Forums" },
   { keys: ["G", "S"], label: "Go to Societies" },
   { keys: ["G", "C"], label: "Go to Claims" },
+  { keys: ["G", "R"], label: "Go to Resources" },
+  { keys: ["G", "P"], label: "Go to Profile / Settings" },
   { keys: ["?"], label: "Show shortcuts" },
   { keys: ["Esc"], label: "Close panels / Clear search" },
 ];
@@ -72,7 +74,7 @@ export function TopBar() {
         }
         if (pendingKey.current === "g") {
           pendingKey.current = null;
-          const nav: Record<string, string> = { d: "dashboard", e: "events", f: "forums", s: "societies", c: "claims" };
+          const nav: Record<string, string> = { d: "dashboard", e: "events", f: "forums", s: "societies", c: "claims", r: "resources", p: "settings" };
           const dest = nav[e.key.toLowerCase()];
           if (dest) { e.preventDefault(); setView(dest as Parameters<typeof setView>[0]); }
         }
@@ -111,16 +113,22 @@ export function TopBar() {
         time: new Date(e.startsAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }),
         onClick: () => { setBellOpen(false); setView("events"); },
       })),
-    ...localClaims
-      .filter((c) => c.status === "submitted" || c.status === "under_review")
-      .slice(0, 2)
-      .map((c) => ({
+    ...(() => {
+      const isReviewer = ["finance_reviewer", "ukssc_staff", "super_admin"].includes(currentUser.role);
+      const pendingClaims = localClaims.filter((c) =>
+        (c.status === "submitted" || c.status === "under_review") &&
+        (isReviewer || c.claimant === currentUser.name)
+      ).slice(0, 2);
+      return pendingClaims.map((c) => ({
         id: `claim-${c.id}`,
         icon: <CurrencyGbp size={14} weight="fill" style={{ color: "var(--warning-text)", flexShrink: 0 }} />,
-        text: `${c.claimant}: £${c.amount} claim ${c.status === "submitted" ? "awaiting review" : "under review"}`,
+        text: isReviewer
+          ? `${c.claimant}: £${c.amount.toFixed(2)} claim ${c.status === "submitted" ? "awaiting review" : "under review"}`
+          : `Your £${c.amount.toFixed(2)} claim is ${c.status === "submitted" ? "awaiting review" : "under review"}`,
         time: new Date(c.submittedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }),
         onClick: () => { setBellOpen(false); setView("claims"); },
-      })),
+      }));
+    })(),
     ...localForums.slice(0, 2).map((f) => ({
       id: `forum-${f.id}`,
       icon: <ChatCircleText size={14} weight="fill" style={{ color: "var(--on-secondary-container)", flexShrink: 0 }} />,

@@ -4,6 +4,7 @@ import { CalendarBlank, ChatCircleText, MapPin, Receipt, Storefront, UsersThree,
 import { useApp } from "@/lib/app-context";
 import { universities } from "@/lib/data";
 import { PageHeader, Thread } from "@/components/ui/primitives";
+import { rsvpEventAction } from "@/lib/actions";
 
 function formatEventDate(startsAt: string) {
   return new Date(startsAt).toLocaleDateString("en-GB", {
@@ -231,11 +232,20 @@ export function DashboardView() {
                   {can("rsvp_events") && (
                     <button
                       className={rsvpdEventIds.includes(featuredEvent.id) ? "stitch-secondary" : "stitch-primary"}
-                      onClick={() => {
+                      onClick={async () => {
                         const alreadyRsvpd = rsvpdEventIds.includes(featuredEvent.id);
+                        // Optimistic update
                         setRsvpdEventIds(alreadyRsvpd ? rsvpdEventIds.filter((id) => id !== featuredEvent.id) : [...rsvpdEventIds, featuredEvent.id]);
                         setLocalEvents(localEvents.map((e) => e.id === featuredEvent.id ? { ...e, rsvps: Math.max(0, e.rsvps + (alreadyRsvpd ? -1 : 1)) } : e));
                         announce(alreadyRsvpd ? `RSVP cancelled for ${featuredEvent.title}.` : "RSVP confirmed. Your QR check-in pass will appear in the Events tab.");
+                        // Persist to DB — roll back optimistic state on failure
+                        if (currentUser.id) {
+                          rsvpEventAction(featuredEvent.id, currentUser.id).catch(() => {
+                            setRsvpdEventIds(alreadyRsvpd ? [...rsvpdEventIds, featuredEvent.id] : rsvpdEventIds.filter((id) => id !== featuredEvent.id));
+                            setLocalEvents(localEvents.map((e) => e.id === featuredEvent.id ? { ...e, rsvps: Math.max(0, e.rsvps + (alreadyRsvpd ? 1 : -1)) } : e));
+                            announce("RSVP failed to sync — please try again.");
+                          });
+                        }
                       }}
                       type="button"
                     >
