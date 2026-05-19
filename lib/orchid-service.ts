@@ -101,7 +101,10 @@ export function mapProfile(row: Record<string, unknown>): Profile {
     email,
     role: (row.role ?? "student_member") as Profile["role"],
     accountType: (row.account_type ?? "student") as Profile["accountType"],
-    universityId: resolvedUniversity?.id ?? undefined,
+    // Prefer email-resolved slug; fall back to the raw DB value so the
+    // universityId is never silently dropped when the domain isn't in the
+    // local list (e.g. newly onboarded universities).
+    universityId: resolvedUniversity?.id ?? (row.university_id as string | undefined),
     societyId: row.society_id as string | undefined,
     course: row.course as string | undefined,
     year: (row.study_year ?? row.year) as string | undefined,

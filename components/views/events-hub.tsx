@@ -36,8 +36,11 @@ function formatTime(startsAt: string) {
 }
 
 function QrPass({ eventId, userId, eventTitle }: { eventId: string; userId: string; eventTitle: string }) {
+  // Token shown to staff at the door. Local generation avoids sending user IDs
+  // to third-party QR services (privacy) and removes the external availability
+  // dependency. TODO: replace with a bundled qrcode library (e.g. "qrcode") to
+  // render a real scannable QR image once the dependency is approved.
   const token = `ORCHID-${eventId}-${userId}`;
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(token)}&bgcolor=ffffff&color=000000&margin=10`;
 
   return (
     <div style={{
@@ -49,13 +52,26 @@ function QrPass({ eventId, userId, eventTitle }: { eventId: string; userId: stri
       borderRadius: 12,
       background: "var(--surface-container, #faf7fb)",
       border: "1.5px solid var(--outline-variant, rgba(208,194,213,0.4))",
-      maxWidth: 200,
+      maxWidth: 220,
     }}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={qrUrl} alt={`QR check-in pass for ${eventTitle}`} width={160} height={160} style={{ borderRadius: 8 }} />
+      {/* Check-in token — scannable QR pending qrcode library approval */}
+      <div style={{
+        width: 160, height: 160,
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        background: "#fff",
+        borderRadius: 8,
+        border: "1px solid var(--outline-variant, rgba(208,194,213,0.4))",
+        gap: 8,
+        padding: 12,
+      }}>
+        <QrCode size={56} style={{ color: "var(--primary)", flexShrink: 0 }} aria-hidden="true" />
+        <span style={{ fontFamily: "monospace", fontSize: 8, wordBreak: "break-all", textAlign: "center", color: "var(--on-surface)", lineHeight: 1.4 }}>
+          {token}
+        </span>
+      </div>
       <p style={{ fontSize: 10, color: "var(--muted)", textAlign: "center", margin: 0, lineHeight: 1.4 }}>
-        Show this at the door<br />
-        <span style={{ fontFamily: "monospace", fontSize: 9, wordBreak: "break-all" }}>{token.slice(0, 24)}…</span>
+        Show this code at the door<br />
+        <span aria-label={`Event: ${eventTitle}`} style={{ fontSize: 9, opacity: 0.7 }}>{eventTitle.slice(0, 30)}</span>
       </p>
     </div>
   );

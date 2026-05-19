@@ -2,7 +2,7 @@
 
 import { ArrowLeft, CheckCircle, Globe, InstagramLogo, MapPin, UsersThree } from "@phosphor-icons/react";
 import { useApp } from "@/lib/app-context";
-import { joinSocietyAction } from "@/lib/actions";
+import { joinSocietyAction, rsvpEventAction } from "@/lib/actions";
 import { universities } from "@/lib/data";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -12,10 +12,13 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export function SocietyDetail() {
-  const { currentSocietyId, setView, joinedSociety, setJoinedSociety, announce, localSocieties, localEvents, currentUser, setCurrentUser } = useApp();
+  const { currentSocietyId, setView, joinedSociety, setJoinedSociety, announce, localSocieties, localEvents, setLocalEvents, rsvpdEventIds, setRsvpdEventIds, currentUser, setCurrentUser } = useApp();
   const society = localSocieties.find((s) => s.id === currentSocietyId);
   const university = universities.find((u) => u.id === (society?.universitySlug || society?.universityId));
-  const societyEvents = localEvents.filter((e) => e.societyIds.includes(currentSocietyId ?? ""));
+  const now = new Date().toISOString();
+  const societyEvents = localEvents
+    .filter((e) => e.societyIds.includes(currentSocietyId ?? "") && e.startsAt >= now)
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 
   if (!society) {
     return (
@@ -210,28 +213,32 @@ export function SocietyDetail() {
               const day = date.toLocaleDateString("en-GB", { day: "numeric", timeZone: "UTC" });
               return (
                 <div key={event.id} style={{ display: "flex", gap: 14, alignItems: "center" }}>
-                  <div style={{ textAlign: "center", minWidth: 40 }}>
+                  <div style={{ textAlign: "center", minWidth: 40, flexShrink: 0 }}>
                     <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "var(--primary)", letterSpacing: "0.04em" }}>{month}</div>
                     <div style={{ fontSize: 20, fontWeight: 800, color: "var(--on-surface)", lineHeight: 1.2 }}>{day}</div>
                   </div>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)" }}>{event.title}</div>
-                    <div style={{ fontSize: 12, color: "var(--muted)" }}>{event.location} &middot; {event.rsvps} going</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{event.title}</div>
+                    <div style={{ fontSize: 12, color: "var(--muted)" }}>{event.location} &middot; {event.rsvps}/{event.capacity} going</div>
                   </div>
-                  <span
-                    style={{
-                      marginLeft: "auto",
-                      fontSize: 10,
-                      fontWeight: 700,
-                      textTransform: "uppercase",
-                      padding: "3px 10px",
-                      borderRadius: 999,
-                      background: event.status === "open" ? "var(--secondary-container)" : "var(--surface-container)",
-                      color: event.status === "open" ? "var(--on-secondary-container)" : "var(--muted)"
-                    }}
-                  >
-                    {event.status}
-                  </span>
+                  {event.status !== "closed" && (
+                    <button
+                      type="button"
+                      className={rsvpdEventIds.includes(event.id) ? "stitch-secondary" : "stitch-primary"}
+                      style={{ flexShrink: 0, fontSize: 12, padding: "6px 14px" }}
+                      onClick={() => {
+                        const alreadyRsvpd = rsvpdEventIds.includes(event.id);
+                        setRsvpdEventIds(alreadyRsvpd ? rsvpdEventIds.filter((id) => id !== event.id) : [...rsvpdEventIds, event.id]);
+                        setLocalEvents(localEvents.map((e) => e.id === event.id ? { ...e, rsvps: Math.max(0, e.rsvps + (alreadyRsvpd ? -1 : 1)) } : e));
+                        announce(alreadyRsvpd ? `RSVP cancelled for ${event.title}.` : `RSVP confirmed for ${event.title}!`);
+                        if (currentUser.id) {
+                          rsvpEventAction(event.id, currentUser.id).catch(() => {});
+                        }
+                      }}
+                    >
+                      {rsvpdEventIds.includes(event.id) ? "RSVP'd ✓" : "RSVP"}
+                    </button>
+                  )}
                 </div>
               );
             })}

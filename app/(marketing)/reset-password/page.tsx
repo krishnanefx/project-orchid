@@ -26,10 +26,14 @@ export default function ResetPasswordPage() {
     setStatus("loading");
     setErrorMsg("");
 
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseKey) {
+      setErrorMsg("Service configuration error. Please contact support.");
+      setStatus("error");
+      return;
+    }
+    const supabase = createBrowserClient(supabaseUrl, supabaseKey);
 
     const { error } = await supabase.auth.updateUser({ password });
 

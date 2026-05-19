@@ -13,23 +13,39 @@ async function registerAction(formData: FormData) {
   const name = formData.get("name") as string;
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
+  const societyId = formData.get("societyId") as string | null;
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { name } }
+    options: {
+      data: { name, society_id: societyId || undefined }
+    }
   });
 
   if (error) {
-    redirect(`/register?error=${encodeURIComponent(error.message)}`);
+    const qs = societyId ? `&society=${encodeURIComponent(societyId)}` : "";
+    redirect(`/register?error=${encodeURIComponent(error.message)}${qs}`);
   }
 
   redirect("/login?registered=true");
 }
 
-export default async function RegisterPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const { error } = await searchParams;
+async function getSocietyName(id: string): Promise<string | null> {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return null;
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase.from("societies").select("name").eq("id", id).single();
+    return (data as Record<string, unknown> | null)?.name as string ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export default async function RegisterPage({ searchParams }: { searchParams: Promise<{ error?: string; society?: string }> }) {
+  const { error, society: societyId } = await searchParams;
+  const societyName = societyId ? await getSocietyName(societyId) : null;
   return (
     <div className="bg-background min-h-screen flex flex-col font-body-md text-on-background">
       <main className="flex-grow flex items-center justify-center orchid-gradient botanical-pattern px-4 py-12">
@@ -57,12 +73,27 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
                 <p className="font-body-sm text-on-surface-variant">Create your profile and connect with Singaporean students across the UK.</p>
               </div>
 
+              {societyId && (
+                <div className="mb-6 px-4 py-3 rounded-lg bg-primary/10 border border-primary/20 flex items-start gap-3">
+                  <span className="material-symbols-outlined text-primary text-xl mt-0.5" aria-hidden="true">group_add</span>
+                  <div>
+                    <p className="font-label text-label text-primary font-semibold">Society invite</p>
+                    <p className="text-sm text-on-surface-variant mt-0.5">
+                      {societyName
+                        ? <>You&apos;ve been invited to join <span className="font-semibold text-on-surface">{societyName}</span>. Create an account to accept.</>
+                        : <>You&apos;ve been invited to join a society. Create an account to accept.</>}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {error && (
                 <div className="mb-6 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm font-medium">
                   {decodeURIComponent(error)}
                 </div>
               )}
               <form className="space-y-5" action={registerAction}>
+                {societyId && <input type="hidden" name="societyId" value={societyId} />}
                 <div>
                   <label className="block font-label text-label text-on-surface mb-2" htmlFor="name">
                     Full Name
