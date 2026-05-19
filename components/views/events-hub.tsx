@@ -1,7 +1,8 @@
 "use client";
 
 import { CalendarBlank, List, MapPin, QrCode, UsersThree, Clock } from "@phosphor-icons/react";
-import { useState } from "react";
+import QRCode from "qrcode";
+import { useEffect, useState } from "react";
 import { useApp } from "@/lib/app-context";
 import { rsvpEventAction } from "@/lib/actions";
 import { PageHeader } from "@/components/ui/primitives";
@@ -36,11 +37,15 @@ function formatTime(startsAt: string) {
 }
 
 function QrPass({ eventId, userId, eventTitle }: { eventId: string; userId: string; eventTitle: string }) {
-  // Token shown to staff at the door. Local generation avoids sending user IDs
-  // to third-party QR services (privacy) and removes the external availability
-  // dependency. TODO: replace with a bundled qrcode library (e.g. "qrcode") to
-  // render a real scannable QR image once the dependency is approved.
+  // Token generated locally — no external API calls (privacy + offline reliability).
   const token = `ORCHID-${eventId}-${userId}`;
+  const [dataUrl, setDataUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    QRCode.toDataURL(token, { width: 160, margin: 1, color: { dark: "#6b21a8", light: "#ffffff" } })
+      .then(setDataUrl)
+      .catch(() => setDataUrl(null));
+  }, [token]);
 
   return (
     <div style={{
@@ -54,24 +59,19 @@ function QrPass({ eventId, userId, eventTitle }: { eventId: string; userId: stri
       border: "1.5px solid var(--outline-variant, rgba(208,194,213,0.4))",
       maxWidth: 220,
     }}>
-      {/* Check-in token — scannable QR pending qrcode library approval */}
-      <div style={{
-        width: 160, height: 160,
-        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        background: "#fff",
-        borderRadius: 8,
-        border: "1px solid var(--outline-variant, rgba(208,194,213,0.4))",
-        gap: 8,
-        padding: 12,
-      }}>
-        <QrCode size={56} style={{ color: "var(--primary)", flexShrink: 0 }} aria-hidden="true" />
-        <span style={{ fontFamily: "monospace", fontSize: 8, wordBreak: "break-all", textAlign: "center", color: "var(--on-surface)", lineHeight: 1.4 }}>
-          {token}
-        </span>
+      <div style={{ background: "#fff", borderRadius: 8, padding: 6, border: "1px solid var(--outline-variant, rgba(208,194,213,0.3))" }}>
+        {dataUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={dataUrl} alt={`QR check-in pass for ${eventTitle}`} width={148} height={148} style={{ display: "block", borderRadius: 4 }} />
+        ) : (
+          <div style={{ width: 148, height: 148, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "var(--muted)" }}>
+            Generating…
+          </div>
+        )}
       </div>
       <p style={{ fontSize: 10, color: "var(--muted)", textAlign: "center", margin: 0, lineHeight: 1.4 }}>
         Show this code at the door<br />
-        <span aria-label={`Event: ${eventTitle}`} style={{ fontSize: 9, opacity: 0.7 }}>{eventTitle.slice(0, 30)}</span>
+        <span style={{ fontFamily: "monospace", fontSize: 9, wordBreak: "break-all" }}>{token.slice(0, 28)}…</span>
       </p>
     </div>
   );

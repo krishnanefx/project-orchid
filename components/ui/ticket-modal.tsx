@@ -1,13 +1,24 @@
 "use client";
 
-import { CalendarBlank, MapPin, QrCode, X } from "@phosphor-icons/react";
+import { CalendarBlank, MapPin, X } from "@phosphor-icons/react";
+import QRCode from "qrcode";
+import { useEffect, useState } from "react";
 import type { OrchidEvent } from "@/lib/types";
 
+function useQrDataUrl(data: string): string | null {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    QRCode.toDataURL(data, { width: 160, margin: 1, color: { dark: "#6b21a8", light: "#faf7fb" } })
+      .then(setUrl)
+      .catch(() => setUrl(null));
+  }, [data]);
+  return url;
+}
+
 export function TicketModal({ event, userId, onClose }: { event: OrchidEvent; userId: string; onClose: () => void }) {
-  // Local token — no external API call to preserve privacy and offline reliability.
-  // TODO: generate an actual scannable QR image once a bundled qrcode library
-  // (e.g. "qrcode") is added to the project dependencies.
+  // Token generated locally — no external API calls (privacy + offline reliability).
   const qrData = `ORCHID-${event.id}${userId ? `-${userId.slice(0, 8)}` : ""}`;
+  const qrDataUrl = useQrDataUrl(qrData);
 
   return (
     <div
@@ -62,16 +73,15 @@ export function TicketModal({ event, userId, onClose }: { event: OrchidEvent; us
 
         {/* QR section */}
         <div style={{ padding: "20px", background: "var(--surface-container, #faf7fb)", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-          <div style={{
-            background: "#fff", padding: 10, borderRadius: 12,
-            border: "1.5px solid var(--outline-variant, rgba(208,194,213,0.4))",
-            width: 160, height: 160,
-            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6,
-          }}>
-            <QrCode size={60} style={{ color: "var(--primary)" }} aria-hidden="true" />
-            <span style={{ fontSize: 7, fontFamily: "monospace", wordBreak: "break-all", textAlign: "center", lineHeight: 1.4, color: "var(--on-surface)", padding: "0 4px" }}>
-              {qrData}
-            </span>
+          <div style={{ background: "#faf7fb", padding: 10, borderRadius: 12, border: "1.5px solid var(--outline-variant, rgba(208,194,213,0.4))" }}>
+            {qrDataUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={qrDataUrl} alt="Check-in QR code" width={140} height={140} style={{ display: "block", borderRadius: 4 }} />
+            ) : (
+              <div style={{ width: 140, height: 140, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "var(--muted)" }}>
+                Generating…
+              </div>
+            )}
           </div>
           <p style={{ fontSize: 12, color: "var(--muted)", margin: 0, textAlign: "center", lineHeight: 1.5 }}>
             Show this to the committee at the door.<br />
