@@ -4,16 +4,12 @@ import {
   ArrowLeft,
   CalendarBlank,
   Camera,
-  ChatCircleText,
   CheckCircle,
-  DownloadSimple,
   FloppyDisk,
   Image as ImageIcon,
   Link as LinkIcon,
-  Lock,
   PencilSimple,
   Plus,
-  PushPin,
   Trash,
   User,
   UsersThree,
@@ -22,24 +18,29 @@ import {
 } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/lib/app-context";
-import { checkInAction, checkInAttendeeAction, createEventAction, createForumBoardAction, deleteEventAction, getEventRsvpsAction, getSocietyMembersAction, updateEventAction, updateEventStatusAction, updateForumBoardAction, updateSocietyAction } from "@/lib/actions";
-import { downloadCsv } from "@/lib/utils";
+import {
+  checkInAction,
+  createEventAction,
+  getEventRsvpsAction,
+  getSocietyMembersAction,
+  updateMemberRoleAction,
+  updateSocietyAction,
+} from "@/lib/actions";
 import { universities } from "@/lib/data";
-import type { EventDraft, ForumBoard, OrchidEvent } from "@/lib/types";
+import type { EventDraft, EventRsvp, MemberRow, OrchidEvent, Role } from "@/lib/types";
 
-type Tab = "profile" | "events" | "members" | "media" | "forums";
+type Tab = "profile" | "events" | "members" | "media";
 
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ size?: number; weight?: "regular" | "fill" }> }[] = [
   { id: "profile", label: "Profile", icon: PencilSimple },
   { id: "events", label: "Events", icon: CalendarBlank },
   { id: "members", label: "Members", icon: UsersThree },
-  { id: "media", label: "Media", icon: ImageIcon },
-  { id: "forums", label: "Forums", icon: ChatCircleText }
+  { id: "media", label: "Media", icon: ImageIcon }
 ];
 
 const EVENT_STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   open: { bg: "var(--secondary-container)", color: "var(--on-secondary-container)" },
-  waitlist: { bg: "var(--warning-bg)", color: "var(--warning-text)" },
+  waitlist: { bg: "#fff3cd", color: "#856404" },
   closed: { bg: "var(--surface-container)", color: "var(--muted)" }
 };
 
@@ -83,13 +84,16 @@ const textareaStyle: React.CSSProperties = {
 };
 
 export function SocietyAdmin() {
-  const { setView, currentUser, localSocieties, updateSociety, announce } = useApp();
+  const { setView, currentUser, currentSocietyId, localSocieties, updateSociety, announce } = useApp();
   const [tab, setTab] = useState<Tab>("profile");
   const [saving, setSaving] = useState(false);
 
-  const society = localSocieties.find((s) => s.id === currentUser.societyId);
-  const university = universities.find((u) => u.id === society?.universityId);
   const isPrivileged = currentUser.role === "super_admin" || currentUser.role === "ukssc_staff";
+  // Privileged users (staff/super admin) can admin any society navigated to via editSociety().
+  // Regular society admins only see the society linked to their profile.
+  const societyId = (isPrivileged && currentSocietyId) ? currentSocietyId : currentUser.societyId;
+  const society = localSocieties.find((s) => s.id === societyId);
+  const university = universities.find((u) => u.id === society?.universityId);
   const isCommittee = society
     ? isPrivileged || society.committee.some(
         (entry) => entry.split("|")[0].trim().toLowerCase() === currentUser.name.toLowerCase()
@@ -159,7 +163,7 @@ export function SocietyAdmin() {
               </p>
             </div>
             {!isCommittee && (
-              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--warning-text)", background: "var(--warning-bg)", padding: "6px 12px", borderRadius: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#856404", background: "#fff3cd", padding: "6px 12px", borderRadius: 8 }}>
                 <Warning size={14} />
                 <span>View only — committee access required to edit</span>
               </div>
@@ -239,15 +243,7 @@ export function SocietyAdmin() {
             if (!isCommittee) return;
             updateSociety(society.id, patch);
             announce("Media updated.");
-            updateSocietyAction(society.id, patch).catch(() => announce("Saved locally but failed to sync."));
           }}
-        />
-      )}
-      {tab === "forums" && (
-        <ForumsTab
-          societyId={society.id}
-          isCommittee={isCommittee}
-          announce={announce}
         />
       )}
     </main>
@@ -459,21 +455,26 @@ function EventsTab({
     allEvents.filter((e) => e.societyIds.includes(societyId))
   );
   const [showForm, setShowForm] = useState(false);
-  const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
-  const [rsvpLists, setRsvpLists] = useState<Record<string, { id: string; name: string; email: string; checkedIn?: boolean }[]>>({});
-  const [rsvpSearch, setRsvpSearch] = useState<Record<string, string>>({});
-  const [loadingRsvps, setLoadingRsvps] = useState<string | null>(null);
-  const [checkingIn, setCheckingIn] = useState<string | null>(null);
-  const [togglingStatus, setTogglingStatus] = useState<string | null>(null);
   const [draft, setDraft] = useState<EventDraft>({
     title: "",
     type: "society",
     startsAt: "",
     location: "",
-    capacity: 50,
-    description: "",
+    capacity: 50
   });
   const [editId, setEditId] = useState<string | null>(null);
+  const [checkInEventId, setCheckInEventId] = useState<string | null>(null);
+  const [rsvps, setRsvps] = useState<EventRsvp[]>([]);
+  const [loadingRsvps, setLoadingRsvps] = useState(false);
+
+  useEffect(() => {
+    if (!checkInEventId) { setRsvps([]); return; }
+    setLoadingRsvps(true);
+    getEventRsvpsAction(checkInEventId)
+      .then(setRsvps)
+      .catch(() => setRsvps([]))
+      .finally(() => setLoadingRsvps(false));
+  }, [checkInEventId]);
 
   async function handleSave() {
     if (!draft.title.trim() || !draft.startsAt || !draft.location.trim()) {
@@ -485,7 +486,6 @@ function EventsTab({
       setLocalEvents(updated);
       setAllEvents(allEvents.map((e) => e.id === editId ? { ...e, ...draft, societyIds: e.societyIds } : e));
       announce("Event updated.");
-      updateEventAction(editId, draft).catch(() => announce("Saved locally but failed to sync."));
     } else {
       const optimistic: OrchidEvent = {
         id: `evt-${Date.now()}`,
@@ -507,7 +507,6 @@ function EventsTab({
         location: draft.location,
         capacity: draft.capacity,
         societyIds: [societyId],
-        description: draft.description?.trim() || undefined,
       }).then((saved) => {
         setAllEvents(allWithOptimistic.map((e) => e.id === optimistic.id ? saved : e));
         setLocalEvents(localWithOptimistic.map((e) => e.id === optimistic.id ? saved : e));
@@ -515,40 +514,11 @@ function EventsTab({
     }
     setShowForm(false);
     setEditId(null);
-    setDraft({ title: "", type: "society", startsAt: "", location: "", capacity: 50, description: "" });
-  }
-
-  function toggleRsvpList(event: OrchidEvent) {
-    if (expandedEventId === event.id) {
-      setExpandedEventId(null);
-      return;
-    }
-    setExpandedEventId(event.id);
-    if (!rsvpLists[event.id]) {
-      setLoadingRsvps(event.id);
-      getEventRsvpsAction(event.id)
-        .then((list) => setRsvpLists((prev) => ({ ...prev, [event.id]: list })))
-        .catch(() => setRsvpLists((prev) => ({ ...prev, [event.id]: [] })))
-        .finally(() => setLoadingRsvps(null));
-    }
-  }
-
-  async function handleCheckIn(event: OrchidEvent) {
-    setCheckingIn(event.id);
-    setLocalEvents((prev) => prev.map((e) => e.id === event.id ? { ...e, checkedIn: e.checkedIn + 1 } : e));
-    setAllEvents(allEvents.map((e) => e.id === event.id ? { ...e, checkedIn: e.checkedIn + 1 } : e));
-    try {
-      await checkInAction(event.id);
-      announce("Check-in recorded.");
-    } catch {
-      announce("Check-in failed — please try again.");
-    } finally {
-      setCheckingIn(null);
-    }
+    setDraft({ title: "", type: "society", startsAt: "", location: "", capacity: 50 });
   }
 
   function handleEdit(event: OrchidEvent) {
-    setDraft({ title: event.title, type: event.type, startsAt: event.startsAt, location: event.location, capacity: event.capacity, description: event.description ?? "" });
+    setDraft({ title: event.title, type: event.type, startsAt: event.startsAt, location: event.location, capacity: event.capacity });
     setEditId(event.id);
     setShowForm(true);
   }
@@ -557,29 +527,13 @@ function EventsTab({
     setLocalEvents((prev) => prev.filter((e) => e.id !== id));
     setAllEvents(allEvents.filter((e) => e.id !== id));
     announce("Event removed.");
-    deleteEventAction(id).catch(() => announce("Removed locally but failed to sync."));
-  }
-
-  async function handleStatusToggle(event: OrchidEvent) {
-    const next: OrchidEvent["status"] = event.status === "closed" ? "open" : event.status === "open" ? "closed" : "open";
-    setTogglingStatus(event.id);
-    setLocalEvents((prev) => prev.map((e) => e.id === event.id ? { ...e, status: next } : e));
-    setAllEvents(allEvents.map((e) => e.id === event.id ? { ...e, status: next } : e));
-    try {
-      await updateEventStatusAction(event.id, next);
-      announce(`Event ${next === "closed" ? "closed" : "re-opened"}.`);
-    } catch {
-      announce("Status update failed — change applied locally.");
-    } finally {
-      setTogglingStatus(null);
-    }
   }
 
   return (
     <div>
       {isCommittee && (
         <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
-          <button type="button" className="stitch-primary" onClick={() => { setShowForm(true); setEditId(null); setDraft({ title: "", type: "society", startsAt: "", location: "", capacity: 50, description: "" }); }}>
+          <button type="button" className="stitch-primary" onClick={() => { setShowForm(true); setEditId(null); setDraft({ title: "", type: "society", startsAt: "", location: "", capacity: 50 }); }}>
             <Plus size={15} /> New Event
           </button>
         </div>
@@ -594,7 +548,7 @@ function EventsTab({
             <FieldRow label="Title *">
               <input style={inputStyle} value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder="e.g. Freshers Welcome Night" />
             </FieldRow>
-            <div className="grid-2" style={{ gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               <FieldRow label="Event Type">
                 <select style={inputStyle} value={draft.type} onChange={(e) => setDraft({ ...draft, type: e.target.value as EventDraft["type"] })}>
                   <option value="society">Society</option>
@@ -606,7 +560,7 @@ function EventsTab({
                 <input style={inputStyle} type="number" min={1} value={draft.capacity} onChange={(e) => setDraft({ ...draft, capacity: Number(e.target.value) })} />
               </FieldRow>
             </div>
-            <div className="grid-2" style={{ gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               <FieldRow label="Date & Time *">
                 <input style={inputStyle} type="datetime-local" value={draft.startsAt.slice(0, 16)} onChange={(e) => setDraft({ ...draft, startsAt: e.target.value })} />
               </FieldRow>
@@ -614,9 +568,6 @@ function EventsTab({
                 <input style={inputStyle} value={draft.location} onChange={(e) => setDraft({ ...draft, location: e.target.value })} placeholder="e.g. Bloomsbury, London" />
               </FieldRow>
             </div>
-            <FieldRow label="Description">
-              <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 72, lineHeight: 1.6 } as React.CSSProperties} value={draft.description ?? ""} onChange={(e) => setDraft({ ...draft, description: e.target.value })} placeholder="Optional — what should attendees know about this event?" />
-            </FieldRow>
           </div>
           <div style={{ display: "flex", gap: 10, marginTop: 16, justifyContent: "flex-end" }}>
             <button type="button" className="stitch-secondary" onClick={() => { setShowForm(false); setEditId(null); }}>Cancel</button>
@@ -640,159 +591,84 @@ function EventsTab({
             const day = date.toLocaleDateString("en-GB", { day: "numeric", timeZone: "UTC" });
             const statusColors = EVENT_STATUS_COLORS[event.status] ?? EVENT_STATUS_COLORS.closed;
             return (
-              <div key={event.id} className="stitch-card" style={{ padding: 0, overflow: "hidden" }}>
-                <div style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: 16 }}>
-                  <div style={{ textAlign: "center", minWidth: 44, flexShrink: 0 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "var(--primary)", letterSpacing: "0.04em" }}>{month}</div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: "var(--on-surface)", lineHeight: 1.1 }}>{day}</div>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)", marginBottom: 2 }}>{event.title}</div>
-                    <div style={{ fontSize: 12, color: "var(--muted)" }}>
-                      {event.location} &middot; {event.rsvps}/{event.capacity} RSVPs &middot; {event.checkedIn} checked in
-                    </div>
-                  </div>
-                  <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "3px 10px", borderRadius: 999, background: statusColors.bg, color: statusColors.color, flexShrink: 0 }}>
-                    {event.status}
-                  </span>
-                  {isCommittee && (
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <button
-                        type="button"
-                        onClick={() => toggleRsvpList(event)}
-                        title="View RSVPs"
-                        style={{ border: 0, background: expandedEventId === event.id ? "var(--primary-soft)" : "none", cursor: "pointer", color: "var(--primary)", padding: 6, borderRadius: 6, display: "flex", fontSize: 10, fontWeight: 700, gap: 4, alignItems: "center" }}
-                      >
-                        <UsersThree size={14} weight="fill" />
-                        {event.rsvps}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleCheckIn(event)}
-                        disabled={checkingIn === event.id}
-                        title="Record manual check-in"
-                        style={{ border: 0, background: "none", cursor: "pointer", color: "var(--primary)", padding: 6, borderRadius: 6, display: "flex" }}
-                      >
-                        <CheckCircle size={15} weight={checkingIn === event.id ? "fill" : "regular"} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleStatusToggle(event)}
-                        disabled={togglingStatus === event.id}
-                        title={event.status === "closed" ? "Re-open event" : "Close event"}
-                        style={{ border: 0, background: "none", cursor: "pointer", color: event.status === "closed" ? "var(--primary)" : "var(--muted)", padding: 6, borderRadius: 6, display: "flex" }}
-                      >
-                        {event.status === "closed"
-                          ? <ArrowLeft size={15} style={{ transform: "rotate(90deg)" }} />
-                          : <X size={15} />}
-                      </button>
-                      <button type="button" onClick={() => handleEdit(event)} style={{ border: 0, background: "none", cursor: "pointer", color: "var(--muted)", padding: 6, borderRadius: 6, display: "flex" }}>
-                        <PencilSimple size={15} />
-                      </button>
-                      <button type="button" onClick={() => handleDelete(event.id)} style={{ border: 0, background: "none", cursor: "pointer", color: "var(--muted)", padding: 6, borderRadius: 6, display: "flex" }}>
-                        <Trash size={15} />
-                      </button>
-                    </div>
-                  )}
+              <div key={event.id}>
+              <div className="stitch-card" style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: 16 }}>
+                <div style={{ textAlign: "center", minWidth: 44, flexShrink: 0 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "var(--primary)", letterSpacing: "0.04em" }}>{month}</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "var(--on-surface)", lineHeight: 1.1 }}>{day}</div>
                 </div>
-                {expandedEventId === event.id && (
-                  <div style={{ borderTop: "1px solid var(--outline-variant, rgba(208,194,213,0.3))", padding: "14px 20px 16px", background: "var(--surface-container)" }}>
-                    {/* Header */}
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
-                      <div>
-                        <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted)" }}>
-                          Attendee Check-in
-                        </span>
-                        {(rsvpLists[event.id] ?? []).length > 0 && (
-                          <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: "var(--secondary)", background: "var(--secondary-container)", padding: "1px 7px", borderRadius: 999 }}>
-                            {(rsvpLists[event.id] ?? []).filter((r) => r.checkedIn).length} / {(rsvpLists[event.id] ?? []).length} present
-                          </span>
-                        )}
-                      </div>
-                      {(rsvpLists[event.id] ?? []).length > 4 && (
-                        <input
-                          value={rsvpSearch[event.id] ?? ""}
-                          onChange={(e) => setRsvpSearch((p) => ({ ...p, [event.id]: e.target.value }))}
-                          placeholder="Search attendee…"
-                          style={{
-                            fontSize: 12, padding: "5px 10px", borderRadius: 7,
-                            border: "1.5px solid var(--outline-variant, rgba(208,194,213,0.5))",
-                            background: "var(--surface-bright)", color: "var(--on-surface)", outline: "none",
-                          }}
-                        />
-                      )}
-                    </div>
-                    {loadingRsvps === event.id ? (
-                      <p style={{ fontSize: 13, color: "var(--muted)" }}>Loading…</p>
-                    ) : (rsvpLists[event.id] ?? []).length === 0 ? (
-                      <p style={{ fontSize: 13, color: "var(--muted)" }}>No RSVPs yet.</p>
-                    ) : (
-                      <div style={{ display: "grid", gap: 6 }}>
-                        {(rsvpLists[event.id] ?? [])
-                          .filter((r) => {
-                            const q = (rsvpSearch[event.id] ?? "").toLowerCase();
-                            return !q || r.name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q);
-                          })
-                          .map((r) => (
-                            <div
-                              key={r.id}
-                              style={{
-                                display: "flex", alignItems: "center", gap: 10,
-                                padding: "7px 10px", borderRadius: 8,
-                                background: r.checkedIn ? "var(--secondary-container)" : "var(--surface-bright)",
-                                border: `1px solid ${r.checkedIn ? "transparent" : "var(--outline-variant, rgba(208,194,213,0.3))"}`,
-                                transition: "background 150ms ease",
-                              }}
-                            >
-                              <div style={{
-                                width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
-                                background: r.checkedIn ? "var(--secondary)" : "var(--surface-container)",
-                                display: "flex", alignItems: "center", justifyContent: "center",
-                                fontSize: 10, fontWeight: 800,
-                                color: r.checkedIn ? "#fff" : "var(--muted)",
-                              }}>
-                                {r.checkedIn
-                                  ? <CheckCircle size={14} weight="fill" />
-                                  : (r.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() || "?")}
-                              </div>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: 12, fontWeight: 600, color: r.checkedIn ? "var(--on-secondary-container)" : "var(--on-surface)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                  {r.name || "Member"}
-                                </div>
-                                {r.email && <div style={{ fontSize: 11, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.email}</div>}
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const next = !r.checkedIn;
-                                  setRsvpLists((prev) => ({
-                                    ...prev,
-                                    [event.id]: (prev[event.id] ?? []).map((a) => a.id === r.id ? { ...a, checkedIn: next } : a),
-                                  }));
-                                  setLocalEvents((prev) => prev.map((e) =>
-                                    e.id === event.id ? { ...e, checkedIn: Math.max(0, e.checkedIn + (next ? 1 : -1)) } : e
-                                  ));
-                                  checkInAttendeeAction(event.id, r.id, next).catch(() =>
-                                    announce("Check-in sync failed — please refresh.")
-                                  );
-                                }}
-                                style={{
-                                  fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 6,
-                                  border: r.checkedIn ? "none" : "1.5px solid var(--primary)",
-                                  background: r.checkedIn ? "none" : "var(--primary-soft)",
-                                  color: r.checkedIn ? "var(--on-secondary-container)" : "var(--primary)",
-                                  cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
-                                }}
-                              >
-                                {r.checkedIn ? "✓ Present" : "Check In"}
-                              </button>
-                            </div>
-                          ))}
-                      </div>
-                    )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)", marginBottom: 2 }}>{event.title}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                    {event.location} &middot; {event.rsvps}/{event.capacity} RSVPs &middot; {event.checkedIn} checked in
+                  </div>
+                </div>
+                <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "3px 10px", borderRadius: 999, background: statusColors.bg, color: statusColors.color, flexShrink: 0 }}>
+                  {event.status}
+                </span>
+                {isCommittee && (
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button type="button" onClick={() => setCheckInEventId(checkInEventId === event.id ? null : event.id)} style={{ border: 0, background: checkInEventId === event.id ? "var(--primary-soft)" : "none", cursor: "pointer", color: "var(--primary)", padding: "6px 10px", borderRadius: 6, display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700 }}>
+                      <CheckCircle size={14} /> Check-in
+                    </button>
+                    <button type="button" onClick={() => handleEdit(event)} style={{ border: 0, background: "none", cursor: "pointer", color: "var(--primary)", padding: 6, borderRadius: 6, display: "flex" }}>
+                      <PencilSimple size={15} />
+                    </button>
+                    <button type="button" onClick={() => handleDelete(event.id)} style={{ border: 0, background: "none", cursor: "pointer", color: "var(--muted)", padding: 6, borderRadius: 6, display: "flex" }}>
+                      <Trash size={15} />
+                    </button>
                   </div>
                 )}
               </div>
+
+              {/* Check-in panel */}
+              {checkInEventId === event.id && (
+                <div style={{ borderTop: "1px solid var(--outline-variant, rgba(208,194,213,0.3))", marginTop: 12, paddingTop: 12 }}>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: "var(--on-surface)", marginBottom: 10 }}>
+                    RSVPs — {rsvps.filter((r) => r.checkedInAt).length}/{rsvps.length} checked in
+                  </p>
+                  {loadingRsvps ? (
+                    <p style={{ fontSize: 12, color: "var(--muted)" }}>Loading RSVPs…</p>
+                  ) : rsvps.length === 0 ? (
+                    <p style={{ fontSize: 12, color: "var(--muted)" }}>No RSVPs yet.</p>
+                  ) : (
+                    <div style={{ display: "grid", gap: 6 }}>
+                      {rsvps.map((rsvp) => {
+                        const checked = !!rsvp.checkedInAt;
+                        return (
+                          <div key={rsvp.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 8, background: checked ? "var(--secondary-container)" : "var(--surface-container, #faf7fb)" }}>
+                            <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--primary-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "var(--primary)", flexShrink: 0 }}>
+                              {rsvp.profileName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                            </div>
+                            <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "var(--on-surface)" }}>{rsvp.profileName}</span>
+                            {checked ? (
+                              <span style={{ fontSize: 11, color: "var(--on-secondary-container)", fontWeight: 700, display: "flex", alignItems: "center", gap: 4 }}>
+                                <CheckCircle size={13} weight="fill" /> {new Date(rsvp.checkedInAt!).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 6, border: "1.5px solid var(--primary)", background: "none", color: "var(--primary)", cursor: "pointer" }}
+                                onClick={async () => {
+                                  await checkInAction(rsvp.id, event.id);
+                                  const now = new Date().toISOString();
+                                  setRsvps((prev) => prev.map((r) => r.id === rsvp.id ? { ...r, checkedInAt: now } : r));
+                                  setLocalEvents((prev) => prev.map((e) => e.id === event.id ? { ...e, checkedIn: e.checkedIn + 1 } : e));
+                                  setAllEvents(allEvents.map((e) => e.id === event.id ? { ...e, checkedIn: e.checkedIn + 1 } : e));
+                                  announce(`${rsvp.profileName} checked in.`);
+                                }}
+                              >
+                                Check in
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
             );
           })}
         </div>
@@ -802,6 +678,16 @@ function EventsTab({
 }
 
 // ── Members Tab ──────────────────────────────────────────────────────────────
+
+const ROLE_LABELS: Record<string, string> = {
+  student_member: "Student",
+  society_admin: "Society Admin",
+  ukssc_staff: "UKSSC Staff",
+  finance_reviewer: "Finance",
+  alumni: "Alumni",
+  sponsor: "Sponsor",
+  super_admin: "Super Admin",
+};
 
 function MembersTab({
   society,
@@ -813,47 +699,55 @@ function MembersTab({
   announce: (msg: string) => void;
 }) {
   const [filter, setFilter] = useState<"all" | "committee" | "members">("all");
-  const [profiles, setProfiles] = useState<import("@/lib/types").Profile[]>([]);
-  const [loadingProfiles, setLoadingProfiles] = useState(true);
+  const [members, setMembers] = useState<MemberRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [updatingRole, setUpdatingRole] = useState<string | null>(null);
 
   useEffect(() => {
+    setLoading(true);
     getSocietyMembersAction(society.id)
-      .then(setProfiles)
-      .catch(() => {})
-      .finally(() => setLoadingProfiles(false));
+      .then(setMembers)
+      .catch(() => setMembers([]))
+      .finally(() => setLoading(false));
   }, [society.id]);
+
+  function exportCsv() {
+    const rows = [
+      ["Name", "Email", "Role", "Verified", "Course", "Year", "Joined"],
+      ...members.map((m) => [
+        m.name, m.email, m.role, m.verified ? "Yes" : "No",
+        m.course ?? "", m.year ?? "",
+        m.joinedAt ? new Date(m.joinedAt).toLocaleDateString("en-GB") : "",
+      ]),
+    ];
+    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = `${society.name.replace(/\s+/g, "-")}-members.csv`;
+    a.click();
+    announce("Member list exported.");
+  }
+
+  async function changeRole(member: MemberRow, role: Role) {
+    setUpdatingRole(member.id);
+    try {
+      await updateMemberRoleAction(member.id, role);
+      setMembers((prev) => prev.map((m) => m.id === member.id ? { ...m, role } : m));
+      announce(`${member.name}'s role updated to ${ROLE_LABELS[role] ?? role}.`);
+    } catch {
+      announce("Failed to update role.");
+    } finally {
+      setUpdatingRole(null);
+    }
+  }
 
   const committeeNames = new Set(
     society.committee.map((e: string) => e.split("|")[0].trim().toLowerCase())
   );
+  const committeeMembers = members.filter((m) => committeeNames.has(m.name.toLowerCase()) || m.role === "society_admin");
+  const regularMembers = members.filter((m) => !committeeNames.has(m.name.toLowerCase()) && m.role !== "society_admin");
 
-  const committeeRows = society.committee.map((entry: string, i: number) => {
-    const parts = entry.split("|");
-    return { id: `committee-${i}`, name: parts[0].trim(), role: parts[1]?.trim() ?? "Committee" };
-  });
-
-  const memberProfiles = profiles.filter(
-    (p) => !committeeNames.has(p.name.toLowerCase())
-  );
-
-  const allRows = [
-    ...committeeRows.map((r) => ({ ...r, isCommitteeMember: true, email: "" })),
-    ...memberProfiles.map((p) => ({ id: p.id, name: p.name, role: p.course ?? "Member", isCommitteeMember: false, email: p.email })),
-  ];
-
-  const displayed = filter === "committee"
-    ? allRows.filter((r) => r.isCommitteeMember)
-    : filter === "members"
-    ? allRows.filter((r) => !r.isCommitteeMember)
-    : allRows;
-
-  function exportMembers() {
-    downloadCsv(`${society.name.replace(/\s+/g, "-").toLowerCase()}-members.csv`, [
-      ["Name", "Email", "Role", "Type"],
-      ...allRows.map((r) => [r.name, r.email, r.role, r.isCommitteeMember ? "Committee" : "Member"]),
-    ]);
-    announce("Member list exported.");
-  }
+  const displayed = filter === "committee" ? committeeMembers : filter === "members" ? regularMembers : members;
 
   return (
     <div>
@@ -874,90 +768,68 @@ function MembersTab({
                 fontSize: 12,
                 fontWeight: 700,
                 cursor: "pointer",
-                textTransform: "capitalize"
+                textTransform: "capitalize",
               }}
             >
-              {f === "all" ? `All (${allRows.length})` : f === "committee" ? `Committee (${committeeRows.length})` : `Members (${memberProfiles.length})`}
+              {f === "all" ? `All (${members.length})` : f === "committee" ? `Committee (${committeeMembers.length})` : `Members (${regularMembers.length})`}
             </button>
           ))}
         </div>
-        {isCommittee && allRows.length > 0 && (
-          <button type="button" className="stitch-secondary" onClick={exportMembers} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
-            <DownloadSimple size={14} /> Export CSV
+        {isCommittee && (
+          <button type="button" className="stitch-secondary" style={{ fontSize: 12, padding: "6px 14px" }} onClick={exportCsv}>
+            Export CSV
           </button>
         )}
       </div>
 
-      {loadingProfiles ? (
-        <p style={{ color: "var(--muted)", fontSize: 13, padding: "16px 0" }}>Loading members…</p>
+      {loading ? (
+        <p style={{ color: "var(--muted)", fontSize: 13, padding: "12px 0" }}>Loading members…</p>
+      ) : displayed.length === 0 ? (
+        <p style={{ color: "var(--muted)", fontSize: 13, padding: "12px 0" }}>
+          {filter === "all" ? "No members yet — share the society's join link." : `No ${filter} members yet.`}
+        </p>
       ) : (
         <div style={{ display: "grid", gap: 10 }}>
-          {displayed.length === 0 && (
-            <p style={{ color: "var(--muted)", fontSize: 13, padding: "8px 0" }}>
-              {filter === "members" ? "No non-committee members yet." : "No members yet."}
-            </p>
-          )}
           {displayed.map((row) => (
             <div key={row.id} className="stitch-card" style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: 14 }}>
               <div style={{
                 width: 36, height: 36, borderRadius: "50%", background: "var(--primary-soft)",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 12, fontWeight: 700, color: "var(--primary)", flexShrink: 0
+                fontSize: 12, fontWeight: 700, color: "var(--primary)", flexShrink: 0,
               }}>
-                {row.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase() || "?"}
+                {row.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)" }}>{row.name || "(No name)"}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.name}</div>
                 <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>
-                  {row.role}{row.email ? ` · ${row.email}` : ""}
+                  {row.email}
+                  {row.course && ` · ${row.course}`}
+                  {row.year && ` · ${row.year}`}
                 </div>
               </div>
-              <span style={{
-                fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "3px 10px", borderRadius: 999,
-                background: row.isCommitteeMember ? "var(--secondary-container)" : "var(--surface-container)",
-                color: row.isCommitteeMember ? "var(--on-secondary-container)" : "var(--muted)"
-              }}>
-                {row.isCommitteeMember ? "Committee" : "Member"}
-              </span>
+              {isCommittee ? (
+                <select
+                  value={row.role}
+                  disabled={updatingRole === row.id}
+                  onChange={(e) => changeRole(row, e.target.value as Role)}
+                  style={{ fontSize: 11, fontWeight: 700, padding: "4px 8px", borderRadius: 6, border: "1.5px solid var(--outline-variant, rgba(208,194,213,0.5))", background: "var(--surface-bright, #fff)", color: "var(--on-surface)", cursor: "pointer" }}
+                  aria-label={`Change role for ${row.name}`}
+                >
+                  {(["student_member", "society_admin", "alumni"] as Role[]).map((r) => (
+                    <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+                  ))}
+                </select>
+              ) : (
+                <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "3px 10px", borderRadius: 999, background: "var(--secondary-container)", color: "var(--on-secondary-container)", flexShrink: 0 }}>
+                  {ROLE_LABELS[row.role] ?? row.role}
+                </span>
+              )}
+              <span
+                title={row.verified ? "Verified" : "Unverified"}
+                style={{ width: 8, height: 8, borderRadius: "50%", background: row.verified ? "var(--on-secondary-container)" : "var(--muted)", flexShrink: 0 }}
+              />
             </div>
           ))}
-        </div>
-      )}
-
-      {isCommittee && (
-        <div className="stitch-card" style={{ padding: 20, marginTop: 16 }}>
-          <h4 style={{ fontSize: 13, fontWeight: 700, color: "var(--on-surface)", marginBottom: 4 }}>Invite Members</h4>
-          <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 12, marginTop: 0 }}>
-            Share this link with new members — they can sign up and join your society from the directory.
-          </p>
-          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            <code style={{
-              flex: "1 1 200px",
-              fontSize: 11,
-              padding: "8px 12px",
-              borderRadius: 8,
-              background: "var(--surface-container)",
-              color: "var(--on-surface)",
-              border: "1px solid var(--outline-variant, rgba(208,194,213,0.4))",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              display: "block",
-            }}>
-              {typeof window !== "undefined" ? `${window.location.origin}/register?society=${society.id}` : `/register?society=${society.id}`}
-            </code>
-            <button
-              type="button"
-              className="stitch-secondary"
-              style={{ fontSize: 12, flexShrink: 0 }}
-              onClick={() => {
-                const link = `${window.location.origin}/register?society=${society.id}`;
-                navigator.clipboard.writeText(link).then(() => announce("Invite link copied to clipboard!")).catch(() => announce("Could not copy — please copy the link manually."));
-              }}
-            >
-              Copy Link
-            </button>
-          </div>
         </div>
       )}
     </div>
@@ -1124,237 +996,6 @@ function MediaTab({
           }}
         />
       </SectionCard>
-    </div>
-  );
-}
-
-// ── Forums Tab ────────────────────────────────────────────────────────────────
-
-function ForumsTab({
-  societyId,
-  isCommittee,
-  announce
-}: {
-  societyId: string;
-  isCommittee: boolean;
-  announce: (msg: string) => void;
-}) {
-  const { localForums, setLocalForums } = useApp();
-  const [showForm, setShowForm] = useState(false);
-  const [boardName, setBoardName] = useState("");
-  const [visibility, setVisibility] = useState<ForumBoard["visibility"]>("membership_restricted");
-  const [creating, setCreating] = useState(false);
-  const [editingPinId, setEditingPinId] = useState<string | null>(null);
-  const [pinDraft, setPinDraft] = useState("");
-
-  const societyBoards = localForums.filter((b) => b.societyId === societyId);
-
-  async function handleCreate() {
-    const name = boardName.trim();
-    if (!name) { announce("Board name is required."); return; }
-    setCreating(true);
-    const optimistic: ForumBoard = {
-      id: `board-${Date.now()}`,
-      name,
-      visibility,
-      societyId,
-      threads: 0,
-      replies: 0,
-      pinned: "",
-      locked: false,
-    };
-    const withNew = [...localForums, optimistic];
-    setLocalForums(withNew);
-    setBoardName("");
-    setShowForm(false);
-    announce(`Forum board "${name}" created.`);
-    try {
-      const created = await createForumBoardAction({ name, visibility, societyId });
-      setLocalForums(withNew.map((b) => b.id === optimistic.id ? created : b));
-    } catch {
-      announce("Board created locally but failed to sync — please refresh.");
-    } finally {
-      setCreating(false);
-    }
-  }
-
-  async function handleSavePin(boardId: string) {
-    const msg = pinDraft.trim();
-    setLocalForums(localForums.map((b) => b.id === boardId ? { ...b, pinned: msg } : b));
-    setEditingPinId(null);
-    setPinDraft("");
-    announce(msg ? "Pinned announcement saved." : "Pinned announcement cleared.");
-    try {
-      await updateForumBoardAction(boardId, { pinned: msg });
-    } catch {
-      announce("Saved locally but failed to sync.");
-    }
-  }
-
-  return (
-    <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-        <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
-          {societyBoards.length} board{societyBoards.length !== 1 ? "s" : ""} for this society
-        </p>
-        {isCommittee && (
-          <button
-            type="button"
-            className="stitch-primary"
-            onClick={() => setShowForm((v) => !v)}
-          >
-            <Plus size={14} /> New Board
-          </button>
-        )}
-      </div>
-
-      {showForm && isCommittee && (
-        <div className="stitch-card" style={{ padding: 20, marginBottom: 16, border: "1.5px solid var(--primary)" }}>
-          <h4 style={{ fontSize: 13, fontWeight: 700, color: "var(--on-surface)", marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-            New Forum Board
-          </h4>
-          <FieldRow label="Board Name">
-            <input
-              style={inputStyle}
-              value={boardName}
-              onChange={(e) => setBoardName(e.target.value)}
-              placeholder="e.g. Events Feedback, General Chat"
-              onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-            />
-          </FieldRow>
-          <FieldRow label="Visibility">
-            <select
-              style={inputStyle}
-              value={visibility}
-              onChange={(e) => setVisibility(e.target.value as ForumBoard["visibility"])}
-            >
-              <option value="membership_restricted">Society members only</option>
-              <option value="open_to_verified_users">All UKSSC members</option>
-            </select>
-          </FieldRow>
-          <div style={{ display: "flex", gap: 10, marginTop: 4, justifyContent: "flex-end" }}>
-            <button type="button" className="stitch-secondary" onClick={() => setShowForm(false)}>Cancel</button>
-            <button type="button" className="stitch-primary" onClick={handleCreate} disabled={creating}>
-              <FloppyDisk size={14} /> Create Board
-            </button>
-          </div>
-        </div>
-      )}
-
-      {societyBoards.length === 0 ? (
-        <div className="stitch-card" style={{ padding: 32, textAlign: "center" }}>
-          <ChatCircleText size={32} style={{ color: "var(--muted)", marginBottom: 10 }} />
-          <p style={{ fontSize: 14, color: "var(--muted)", margin: 0 }}>
-            No forum boards yet.{isCommittee ? " Create one above to start discussions." : ""}
-          </p>
-        </div>
-      ) : (
-        <div style={{ display: "grid", gap: 10 }}>
-          {societyBoards.map((board) => (
-            <div key={board.id} className="stitch-card" style={{ padding: "14px 20px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <div style={{
-                  width: 38, height: 38, borderRadius: 10, background: "var(--primary-soft)",
-                  display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0
-                }}>
-                  {board.locked ? <Lock size={16} style={{ color: "var(--primary)" }} /> : <ChatCircleText size={16} style={{ color: "var(--primary)" }} />}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)" }}>{board.name}</div>
-                  <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
-                    {board.threads} thread{board.threads !== 1 ? "s" : ""} &middot; {board.replies} repl{board.replies !== 1 ? "ies" : "y"}
-                  </div>
-                </div>
-                <span style={{
-                  fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "3px 10px", borderRadius: 999,
-                  background: board.visibility === "membership_restricted" ? "var(--secondary-container)" : "var(--primary-soft)",
-                  color: board.visibility === "membership_restricted" ? "var(--on-secondary-container)" : "var(--primary)"
-                }}>
-                  {board.visibility === "membership_restricted" ? "Members only" : "Open"}
-                </span>
-                {board.locked && (
-                  <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "3px 10px", borderRadius: 999, background: "var(--surface-container)", color: "var(--muted)" }}>
-                    Locked
-                  </span>
-                )}
-                {isCommittee && (
-                  <>
-                    <button
-                      type="button"
-                      title={board.locked ? "Unlock board (allow new threads)" : "Lock board (prevent new threads)"}
-                      onClick={() => {
-                        const next = !board.locked;
-                        setLocalForums(localForums.map((b) => b.id === board.id ? { ...b, locked: next } : b));
-                        announce(next ? `"${board.name}" locked.` : `"${board.name}" unlocked.`);
-                        updateForumBoardAction(board.id, { locked: next }).catch(() => announce("Saved locally but failed to sync."));
-                      }}
-                      style={{
-                        background: board.locked ? "var(--warning-bg)" : "none",
-                        border: "1px solid " + (board.locked ? "#d97706" : "rgba(208,194,213,0.4)"),
-                        borderRadius: 6, padding: "4px 8px", cursor: "pointer",
-                        display: "flex", alignItems: "center", gap: 4,
-                        fontSize: 11, fontWeight: 600,
-                        color: board.locked ? "var(--warning-text)" : "var(--muted)",
-                      }}
-                    >
-                      <Lock size={12} weight={board.locked ? "fill" : "regular"} />
-                      {board.locked ? "Locked" : "Lock"}
-                    </button>
-                    <button
-                      type="button"
-                      title={board.pinned ? "Edit pinned announcement" : "Add pinned announcement"}
-                      onClick={() => { setEditingPinId(board.id); setPinDraft(board.pinned ?? ""); }}
-                      style={{
-                        background: board.pinned ? "var(--primary-soft)" : "none",
-                        border: "1px solid " + (board.pinned ? "var(--primary)" : "rgba(208,194,213,0.4)"),
-                        borderRadius: 6, padding: "4px 8px", cursor: "pointer",
-                        display: "flex", alignItems: "center", gap: 4,
-                        fontSize: 11, fontWeight: 600,
-                        color: board.pinned ? "var(--primary)" : "var(--muted)",
-                      }}
-                    >
-                      <PushPin size={12} weight={board.pinned ? "fill" : "regular"} />
-                      {board.pinned ? "Pinned" : "Pin"}
-                    </button>
-                  </>
-                )}
-              </div>
-
-              {editingPinId === board.id && (
-                <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--outline-variant)" }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--muted)", marginBottom: 8 }}>
-                    Pinned Announcement
-                  </div>
-                  <textarea
-                    value={pinDraft}
-                    onChange={(e) => setPinDraft(e.target.value)}
-                    placeholder="e.g. Welcome! Please read the pinned rules before posting."
-                    rows={2}
-                    style={{ ...inputStyle, resize: "vertical", width: "100%", fontFamily: "inherit" }}
-                    autoFocus
-                  />
-                  <div style={{ display: "flex", gap: 8, marginTop: 8, justifyContent: "flex-end" }}>
-                    <button type="button" className="stitch-secondary" onClick={() => setEditingPinId(null)}>Cancel</button>
-                    <button type="button" className="stitch-primary" onClick={() => handleSavePin(board.id)}>
-                      <FloppyDisk size={13} /> Save
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {!editingPinId && board.pinned && (
-                <div style={{
-                  marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--outline-variant)",
-                  display: "flex", alignItems: "flex-start", gap: 8,
-                }}>
-                  <PushPin size={12} weight="fill" style={{ color: "var(--primary)", flexShrink: 0, marginTop: 2 }} />
-                  <p style={{ fontSize: 12, color: "var(--on-surface)", margin: 0, lineHeight: 1.5, flex: 1 }}>{board.pinned}</p>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

@@ -10,6 +10,8 @@ export type Role =
 export type EventType = "ukssc" | "society" | "cross_society";
 export type ForumVisibility = "open_to_verified_users" | "membership_restricted";
 export type ClaimStatus = "submitted" | "under_review" | "approved" | "rejected" | "paid";
+export type MembershipStatus = "active" | "pending_review" | "committee" | "suspended" | "left" | "alumni_conversion";
+export type BudgetCategory = "events" | "welfare" | "sponsorship" | "operations" | "grants";
 
 export type University = {
   id: string;
@@ -46,7 +48,6 @@ export type EventDraft = {
   startsAt: string;
   location: string;
   capacity: number;
-  description?: string;
 };
 
 export type AdminQueueItem = {
@@ -131,7 +132,6 @@ export type OrchidEvent = {
   rsvps: number;
   checkedIn: number;
   status: "open" | "waitlist" | "closed";
-  description?: string;
 };
 
 export type ForumThread = {
@@ -140,19 +140,8 @@ export type ForumThread = {
   title: string;
   body: string;
   authorId: string;
-  authorName?: string;
   pinned: boolean;
   locked: boolean;
-  createdAt: string;
-  replyCount?: number;
-};
-
-export type ForumReply = {
-  id: string;
-  threadId: string;
-  authorId: string;
-  authorName: string;
-  body: string;
   createdAt: string;
 };
 
@@ -170,12 +159,16 @@ export type ForumBoard = {
 export type ReimbursementClaim = {
   id: string;
   claimant: string;
+  claimantId?: string;
   societyId: string;
   amount: number;
   purpose: string;
   status: ClaimStatus;
   submittedAt: string;
   receiptName: string;
+  receiptPath?: string;
+  reviewerNotes?: string;
+  budgetCategory?: BudgetCategory;
 };
 
 export type Resource = {
@@ -184,5 +177,76 @@ export type Resource = {
   category: "announcement" | "guide" | "article";
   audience: string;
   publishedAt: string;
+  filePath?: string;
   body?: string;
+};
+
+export type Membership = {
+  id: string;
+  profileId: string;
+  profileName: string;
+  profileEmail: string;
+  profileRole: Role;
+  societyId: string;
+  societyName?: string;
+  membershipRole: "member" | "committee" | "president";
+  status: MembershipStatus;
+  joinedAt: string;
+  leftAt?: string;
+  notes?: string;
+};
+
+export type AuditLog = {
+  id: string;
+  actorId?: string;
+  actorName?: string;
+  action: string;
+  entityType: string;
+  entityId?: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type EventRsvp = {
+  id: string;
+  eventId: string;
+  profileId: string;
+  profileName: string;
+  profileEmail: string;
+  status: "confirmed" | "checked_in" | "waitlisted";
+  checkedInAt?: string;
+  createdAt: string;
+};
+
+export type ForumReply = {
+  id: string;
+  threadId: string;
+  body: string;
+  authorId: string;
+  authorName: string;
+  createdAt: string;
+};
+
+export type MemberRow = {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  universityId?: string;
+  societyId?: string;
+  course?: string;
+  year?: string;
+  verified: boolean;
+  consentStatus: "accepted" | "pending";
+  joinedAt?: string;
+  membershipRole?: string;
+};
+
+export type EventRsvpRow = {
+  id: string;
+  eventId: string;
+  profileId: string;
+  profileName: string;
+  status: string;
+  checkedInAt: string | null;
 };

@@ -1,13 +1,11 @@
 "use client";
 
-import { Suspense, lazy, useEffect, useState } from "react";
+import { Suspense, lazy } from "react";
 import { AppProvider, useApp } from "@/lib/app-context";
-import { applyTheme, getStoredTheme } from "@/lib/theme";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/topbar";
 import { Footer } from "@/components/ui/primitives";
-import { acceptConsentAction } from "@/lib/actions";
 import type { ForumBoard, OrchidEvent, Profile, ReimbursementClaim, Resource, Society } from "@/lib/types";
 
 const DashboardView = lazy(() => import("@/components/views/dashboard-view").then((m) => ({ default: m.DashboardView })));
@@ -21,8 +19,8 @@ const ResourcesView = lazy(() => import("@/components/views/resources-view").the
 const AdminView = lazy(() => import("@/components/views/admin-view").then((m) => ({ default: m.AdminView })));
 const ClaimsView = lazy(() => import("@/components/views/claims-view").then((m) => ({ default: m.ClaimsView })));
 const AdminDataView = lazy(() => import("@/components/views/admin-data").then((m) => ({ default: m.AdminDataView })));
-const AdminMembers = lazy(() => import("@/components/views/admin-members").then((m) => ({ default: m.AdminMembers })));
 const SettingsView = lazy(() => import("@/components/views/settings-view").then((m) => ({ default: m.SettingsView })));
+const CheckinView  = lazy(() => import("@/components/views/checkin-view").then((m) => ({ default: m.CheckinView })));
 
 function ViewSkeleton() {
   return <div className="stitch-main" style={{ paddingTop: 40 }} aria-busy="true" aria-label="Loading…" />;
@@ -37,60 +35,14 @@ const ROLE_LABELS: Record<string, string> = {
   sponsor: "Sponsor",
 };
 
-function ConsentBanner() {
-  const { currentUser, setCurrentUser, announce } = useApp();
-  const [dismissed, setDismissed] = useState(false);
-
-  if (dismissed || !currentUser.id || currentUser.consentStatus === "accepted") return null;
-
-  async function handleAccept() {
-    setDismissed(true);
-    setCurrentUser({ ...currentUser, consentStatus: "accepted" });
-    announce("Terms accepted. Welcome to Project Orchid!");
-    try {
-      await acceptConsentAction(currentUser.id);
-    } catch {
-      // accepted locally even if sync fails
-    }
-  }
-
-  return (
-    <div role="dialog" aria-label="Terms and consent" style={{
-      display: "flex",
-      alignItems: "center",
-      gap: 14,
-      padding: "12px 20px",
-      background: "oklch(0.96 0.03 295)",
-      borderBottom: "1.5px solid oklch(0.88 0.06 295)",
-      fontSize: 13,
-      flexWrap: "wrap",
-    }}>
-      <p style={{ flex: 1, margin: 0, color: "var(--on-surface)", minWidth: 200 }}>
-        <strong>Welcome to Project Orchid.</strong> By continuing you agree to UKSSC&apos;s{" "}
-        <a href="#terms" style={{ color: "var(--primary)", fontWeight: 600 }}>Terms of Service</a>{" "}
-        and{" "}
-        <a href="#privacy" style={{ color: "var(--primary)", fontWeight: 600 }}>Privacy Policy</a>.
-        Your data is used only to operate the platform.
-      </p>
-      <button
-        type="button"
-        className="stitch-primary"
-        onClick={handleAccept}
-        style={{ fontSize: 13, padding: "8px 20px", flexShrink: 0 }}
-      >
-        Accept &amp; Continue
-      </button>
-    </div>
-  );
-}
-
 function AppShell() {
-  const { view, toast, viewAs, setViewAs } = useApp();
+  const { view, toast, viewAs, setViewAs, can, currentUser } = useApp();
+  // Roles allowed to reach data-management and access-control sub-views
+  const canManageData = currentUser.role === "super_admin" || currentUser.role === "ukssc_staff";
   return (
     <div className="stitch-app">
       <Sidebar />
       <div className="stitch-body">
-        <ConsentBanner />
         {viewAs && (
           <div role="status" style={{
             display: "flex",
@@ -122,19 +74,20 @@ function AppShell() {
         {toast ? <div className="toast" role="status" aria-live="polite">{toast}</div> : null}
         <ErrorBoundary>
           <Suspense fallback={<ViewSkeleton />}>
-            {view === "dashboard" && <DashboardView />}
-            {view === "societies" && <SocietyDirectory />}
+            {view === "dashboard"     && <DashboardView />}
+            {view === "societies"     && can("nav_societies")     && <SocietyDirectory />}
             {view === "society-detail" && <SocietyDetail />}
-            {view === "society-admin" && <SocietyAdmin />}
-            {view === "access-control" && <AccessControl />}
-            {view === "events" && <EventsHub />}
-            {view === "forums" && <ForumsView />}
-            {view === "resources" && <ResourcesView />}
-            {view === "admin" && <AdminView />}
-            {view === "claims" && <ClaimsView />}
-            {view === "admin-data" && <AdminDataView />}
-            {view === "admin-members" && <AdminMembers />}
-            {view === "settings" && <SettingsView />}
+            {view === "society-admin" && can("nav_society_admin") && <SocietyAdmin />}
+            {/* admin-data + access-control: super_admin / ukssc_staff only — not finance_reviewer */}
+            {view === "access-control" && canManageData && <AccessControl />}
+            {view === "events"        && can("nav_events")        && <EventsHub />}
+            {view === "forums"        && can("nav_forums")        && <ForumsView />}
+            {view === "resources"     && can("nav_resources")     && <ResourcesView />}
+            {view === "admin"         && can("nav_admin")         && <AdminView />}
+            {view === "claims"        && can("submit_claims")     && <ClaimsView />}
+            {view === "admin-data"    && canManageData            && <AdminDataView />}
+            {view === "settings"      && <SettingsView />}
+            {view === "checkin-admin" && can("nav_admin")         && <CheckinView />}
           </Suspense>
         </ErrorBoundary>
         <Footer />
@@ -162,10 +115,6 @@ export function OrchidApp({
   initialResources,
   initialRsvpIds,
 }: OrchidAppProps) {
-  useEffect(() => {
-    applyTheme(getStoredTheme());
-  }, []);
-
   return (
     <AppProvider
       initialUser={initialUser}
