@@ -1,7 +1,8 @@
 "use client";
 
 import { CalendarBlank, List, MapPin, QrCode, UsersThree, Clock } from "@phosphor-icons/react";
-import { useState } from "react";
+import QRCode from "qrcode";
+import { useEffect, useState } from "react";
 import { useApp } from "@/lib/app-context";
 import { rsvpEventAction } from "@/lib/actions";
 import { PageHeader } from "@/components/ui/primitives";
@@ -36,8 +37,15 @@ function formatTime(startsAt: string) {
 }
 
 function QrPass({ eventId, userId, eventTitle }: { eventId: string; userId: string; eventTitle: string }) {
+  // Token generated locally — no external API calls (privacy + offline reliability).
   const token = `ORCHID-${eventId}-${userId}`;
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(token)}&bgcolor=ffffff&color=000000&margin=10`;
+  const [dataUrl, setDataUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    QRCode.toDataURL(token, { width: 160, margin: 1, color: { dark: "#6b21a8", light: "#ffffff" } })
+      .then(setDataUrl)
+      .catch(() => setDataUrl(null));
+  }, [token]);
 
   return (
     <div style={{
@@ -49,13 +57,21 @@ function QrPass({ eventId, userId, eventTitle }: { eventId: string; userId: stri
       borderRadius: 12,
       background: "var(--surface-container, #faf7fb)",
       border: "1.5px solid var(--outline-variant, rgba(208,194,213,0.4))",
-      maxWidth: 200,
+      maxWidth: 220,
     }}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={qrUrl} alt={`QR check-in pass for ${eventTitle}`} width={160} height={160} style={{ borderRadius: 8 }} />
+      <div style={{ background: "#fff", borderRadius: 8, padding: 6, border: "1px solid var(--outline-variant, rgba(208,194,213,0.3))" }}>
+        {dataUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={dataUrl} alt={`QR check-in pass for ${eventTitle}`} width={148} height={148} style={{ display: "block", borderRadius: 4 }} />
+        ) : (
+          <div style={{ width: 148, height: 148, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "var(--muted)" }}>
+            Generating…
+          </div>
+        )}
+      </div>
       <p style={{ fontSize: 10, color: "var(--muted)", textAlign: "center", margin: 0, lineHeight: 1.4 }}>
-        Show this at the door<br />
-        <span style={{ fontFamily: "monospace", fontSize: 9, wordBreak: "break-all" }}>{token.slice(0, 24)}…</span>
+        Show this code at the door<br />
+        <span style={{ fontFamily: "monospace", fontSize: 9, wordBreak: "break-all" }}>{token.slice(0, 28)}…</span>
       </p>
     </div>
   );

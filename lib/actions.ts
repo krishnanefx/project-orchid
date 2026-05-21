@@ -258,6 +258,32 @@ export async function createEventAction(input: {
   };
 }
 
+export async function updateEventAction(
+  id: string,
+  patch: Partial<Pick<OrchidEvent, "title" | "type" | "startsAt" | "location" | "capacity">>
+): Promise<void> {
+  const supabase = await createClient();
+  const dbPatch: Record<string, unknown> = {};
+  if (patch.title !== undefined) dbPatch.title = patch.title;
+  // Supabase column is `event_type`, not `type`
+  if (patch.type !== undefined) dbPatch.event_type = patch.type;
+  if (patch.startsAt !== undefined) dbPatch.starts_at = patch.startsAt;
+  if (patch.location !== undefined) dbPatch.location = patch.location;
+  if (patch.capacity !== undefined) dbPatch.capacity = patch.capacity;
+  if (!Object.keys(dbPatch).length) return;
+  const { error } = await supabase.from("events").update(dbPatch).eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function updateEventStatusAction(
+  id: string,
+  status: OrchidEvent["status"]
+): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("events").update({ status }).eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
 // ── Event RSVPs ───────────────────────────────────────────────────────────────
 
 export async function rsvpEventAction(
@@ -410,6 +436,21 @@ export async function createForumBoardAction(input: {
     pinned: (row.pinned ?? "") as string,
     locked: false,
   };
+}
+
+export async function updateForumBoardAction(
+  boardId: string,
+  patch: { name?: string; visibility?: ForumBoard["visibility"]; locked?: boolean; pinned?: string }
+): Promise<void> {
+  const supabase = await createClient();
+  const dbPatch: Record<string, unknown> = {};
+  if (patch.name !== undefined) dbPatch.name = patch.name;
+  if (patch.visibility !== undefined) dbPatch.visibility = patch.visibility;
+  if (patch.locked !== undefined) dbPatch.locked = patch.locked;
+  if (patch.pinned !== undefined) dbPatch.pinned = patch.pinned;
+  if (!Object.keys(dbPatch).length) return;
+  const { error } = await supabase.from("forum_boards").update(dbPatch).eq("id", boardId);
+  if (error) throw new Error(error.message);
 }
 
 // ── Forum Threads ─────────────────────────────────────────────────────────────
@@ -717,13 +758,22 @@ export async function updateMemberRoleAction(profileId: string, role: Role): Pro
   if (error) throw new Error(error.message);
 }
 
-export async function getProfilesAction(): Promise<Profile[]> {
+export async function verifyMemberAction(profileId: string, verified: boolean): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ verified })
+    .eq("id", profileId);
+  if (error) throw new Error(error.message);
+}
+
+export async function getProfilesAction(limit = 500): Promise<Profile[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("profiles")
     .select("*")
     .order("full_name")
-    .limit(500);
+    .limit(limit);
   return (data ?? []).map((row) => {
     const r = row as Record<string, unknown>;
     return {
@@ -754,10 +804,18 @@ export async function checkInAction(rsvpId: string, eventId: string): Promise<vo
     .update({ checked_in_at: now, status: "checked_in" })
     .eq("id", rsvpId);
   if (rsvpErr) throw new Error(rsvpErr.message);
-  // Bump event checked_in counter
-  const { data: ev } = await supabase.from("events").select("checked_in").eq("id", eventId).single();
-  const current = ((ev as Record<string, unknown>)?.checked_in as number) ?? 0;
-  await supabase.from("events").update({ checked_in: current + 1 }).eq("id", eventId);
+  // Atomic increment via Postgres RPC to avoid race conditions when multiple
+  // staff check in attendees simultaneously. Falls back to read-modify-write
+  // if the RPC isn't available.
+  const { error: rpcErr } = await (supabase as unknown as { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ error: unknown }> })
+    .rpc("increment_event_checked_in", { event_id: eventId });
+  if (rpcErr) {
+    // Fallback: read-modify-write (non-atomic, fine for low concurrency)
+    const { data: ev } = await supabase.from("events").select("checked_in").eq("id", eventId).single();
+    const current = ((ev as Record<string, unknown>)?.checked_in as number) ?? 0;
+    const { error: upErr } = await supabase.from("events").update({ checked_in: current + 1 }).eq("id", eventId);
+    if (upErr) throw new Error(upErr.message);
+  }
 }
 
 // ── Receipt upload ────────────────────────────────────────────────────────────

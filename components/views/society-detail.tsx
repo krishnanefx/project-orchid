@@ -2,6 +2,7 @@
 
 import { ArrowLeft, CheckCircle, Globe, InstagramLogo, MapPin, UsersThree } from "@phosphor-icons/react";
 import { useApp } from "@/lib/app-context";
+import { joinSocietyAction, rsvpEventAction } from "@/lib/actions";
 import { universities } from "@/lib/data";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -11,10 +12,13 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export function SocietyDetail() {
-  const { currentSocietyId, setView, joinedSociety, setJoinedSociety, announce, localSocieties, localEvents } = useApp();
+  const { currentSocietyId, setView, joinedSociety, setJoinedSociety, announce, localSocieties, localEvents, setLocalEvents, rsvpdEventIds, setRsvpdEventIds, currentUser, setCurrentUser } = useApp();
   const society = localSocieties.find((s) => s.id === currentSocietyId);
   const university = universities.find((u) => u.id === (society?.universitySlug || society?.universityId));
-  const societyEvents = localEvents.filter((e) => e.societyIds.includes(currentSocietyId ?? ""));
+  const now = new Date().toISOString();
+  const societyEvents = localEvents
+    .filter((e) => e.societyIds.includes(currentSocietyId ?? "") && e.startsAt >= now)
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 
   if (!society) {
     return (
@@ -27,15 +31,24 @@ export function SocietyDetail() {
     );
   }
 
-  const isJoined = joinedSociety === society.name;
+  const s = society;
+  const isJoined = joinedSociety === s.name;
 
-  const societyName = society.name;
   function handleJoin() {
     if (isJoined) return;
-    setJoinedSociety(societyName);
-    announce(`Joined ${societyName}.`);
+    setJoinedSociety(s.name);
+    setCurrentUser({ ...currentUser, societyId: s.id });
+    announce(`Joined ${s.name}.`);
+    if (currentUser.id) {
+      joinSocietyAction(s.id, currentUser.id).catch(() =>
+        announce("Joined locally but failed to sync — please refresh.")
+      );
+    }
   }
 
+  function safeHref(link: string) {
+    return link.startsWith("http") ? link : `https://${link}`;
+  }
   const instagramLink = society.links.find((l) => l.includes("instagram"));
   const otherLinks = society.links.filter((l) => !l.includes("instagram"));
 
@@ -96,9 +109,19 @@ export function SocietyDetail() {
             <div className="meta-row compact" style={{ marginBottom: 12 }}>
               {university && <span><MapPin size={14} /> {university.name}</span>}
               <span><UsersThree size={14} /> {society.members} members</span>
+              {society.foundedYear && <span>Est. {society.foundedYear}</span>}
             </div>
+            {(society.tags ?? []).length > 0 && (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+                {(society.tags ?? []).map((tag) => (
+                  <span key={tag} style={{ fontSize: 11, fontWeight: 600, padding: "2px 10px", borderRadius: 999, background: "var(--surface-container)", color: "var(--muted)" }}>
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
             <p style={{ color: "var(--muted)", fontSize: 14, lineHeight: 1.6, margin: 0 }}>
-              {society.description}
+              {society.bio || society.description}
             </p>
           </div>
           <button
@@ -112,34 +135,30 @@ export function SocietyDetail() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+      <div className="grid-2" style={{ gap: 16, marginBottom: 20 }}>
         {/* Committee */}
         <div className="stitch-card" style={{ padding: 24 }}>
           <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontWeight: 700, fontSize: 14, color: "var(--on-surface)", marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.04em" }}>
             Committee
           </h3>
           <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 10 }}>
-            {society.committee.map((member) => (
-              <li key={member} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: "50%",
-                    background: "var(--primary-soft)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: "var(--primary)"
-                  }}
-                >
-                  {member.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-                </div>
-                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--on-surface)" }}>{member}</span>
-              </li>
-            ))}
+            {society.committee.map((entry) => {
+              const parts = entry.split("|");
+              const name = parts[0].trim();
+              const role = parts[1]?.trim();
+              const initials = name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+              return (
+                <li key={entry} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--primary-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "var(--primary)", flexShrink: 0 }}>
+                    {initials}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--on-surface)" }}>{name}</div>
+                    {role && <div style={{ fontSize: 11, color: "var(--muted)" }}>{role}</div>}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </div>
 
@@ -151,25 +170,25 @@ export function SocietyDetail() {
           <div style={{ display: "grid", gap: 10 }}>
             {instagramLink && (
               <a
-                href={`https://${instagramLink}`}
+                href={safeHref(instagramLink)}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--primary)", fontWeight: 600, textDecoration: "none" }}
               >
                 <InstagramLogo size={16} />
-                {instagramLink.replace("instagram.com/", "@")}
+                {instagramLink.replace(/https?:\/\/(www\.)?instagram\.com\//, "@").replace("instagram.com/", "@")}
               </a>
             )}
             {otherLinks.map((link) => (
               <a
                 key={link}
-                href={`https://${link}`}
+                href={safeHref(link)}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--primary)", fontWeight: 600, textDecoration: "none" }}
               >
                 <Globe size={16} />
-                {link}
+                {link.replace(/^https?:\/\//, "")}
               </a>
             ))}
             {society.links.length === 0 && (
@@ -194,34 +213,55 @@ export function SocietyDetail() {
               const day = date.toLocaleDateString("en-GB", { day: "numeric", timeZone: "UTC" });
               return (
                 <div key={event.id} style={{ display: "flex", gap: 14, alignItems: "center" }}>
-                  <div style={{ textAlign: "center", minWidth: 40 }}>
+                  <div style={{ textAlign: "center", minWidth: 40, flexShrink: 0 }}>
                     <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "var(--primary)", letterSpacing: "0.04em" }}>{month}</div>
                     <div style={{ fontSize: 20, fontWeight: 800, color: "var(--on-surface)", lineHeight: 1.2 }}>{day}</div>
                   </div>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)" }}>{event.title}</div>
-                    <div style={{ fontSize: 12, color: "var(--muted)" }}>{event.location} &middot; {event.rsvps} going</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surface)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{event.title}</div>
+                    <div style={{ fontSize: 12, color: "var(--muted)" }}>{event.location} &middot; {event.rsvps}/{event.capacity} going</div>
                   </div>
-                  <span
-                    style={{
-                      marginLeft: "auto",
-                      fontSize: 10,
-                      fontWeight: 700,
-                      textTransform: "uppercase",
-                      padding: "3px 10px",
-                      borderRadius: 999,
-                      background: event.status === "open" ? "var(--secondary-container)" : "var(--surface-container)",
-                      color: event.status === "open" ? "var(--on-secondary-container)" : "var(--muted)"
-                    }}
-                  >
-                    {event.status}
-                  </span>
+                  {event.status !== "closed" && (
+                    <button
+                      type="button"
+                      className={rsvpdEventIds.includes(event.id) ? "stitch-secondary" : "stitch-primary"}
+                      style={{ flexShrink: 0, fontSize: 12, padding: "6px 14px" }}
+                      onClick={() => {
+                        const alreadyRsvpd = rsvpdEventIds.includes(event.id);
+                        setRsvpdEventIds(alreadyRsvpd ? rsvpdEventIds.filter((id) => id !== event.id) : [...rsvpdEventIds, event.id]);
+                        setLocalEvents(localEvents.map((e) => e.id === event.id ? { ...e, rsvps: Math.max(0, e.rsvps + (alreadyRsvpd ? -1 : 1)) } : e));
+                        announce(alreadyRsvpd ? `RSVP cancelled for ${event.title}.` : `RSVP confirmed for ${event.title}!`);
+                        if (currentUser.id) {
+                          rsvpEventAction(event.id, currentUser.id).catch(() => {});
+                        }
+                      }}
+                    >
+                      {rsvpdEventIds.includes(event.id) ? "RSVP'd ✓" : "RSVP"}
+                    </button>
+                  )}
                 </div>
               );
             })}
           </div>
         )}
       </div>
+
+      {/* Gallery */}
+      {(society.galleryUrls ?? []).length > 0 && (
+        <div className="stitch-card" style={{ padding: 24 }}>
+          <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontWeight: 700, fontSize: 14, color: "var(--on-surface)", marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Gallery
+          </h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 10 }}>
+            {(society.galleryUrls ?? []).map((url, i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" style={{ display: "block", borderRadius: 8, overflow: "hidden", aspectRatio: "1", background: "var(--surface-container)" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt={`${society.name} photo ${i + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" />
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
     </main>
   );
 }
